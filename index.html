@@ -391,7 +391,13 @@ function buildTournament(p) {
   const base={title:p.title,fmt:p.fmt,liveId:null,nextId:null,awards:[],votes:{},votingOpen:false,createdAt:Date.now()};
   if(p.fmt==="sg") return{...base,teams:p.allT,games:roundRobin(p.allT),finals:null};
   if(p.fmt==="mg"){
-    const gd={};Object.entries(p.groups).forEach(([k,t])=>{gd[k]={teams:t,games:roundRobin(t)};});
+    const sourceGroups = {...(p.groups||{})};
+    if(Object.keys(sourceGroups).length===0 && Array.isArray(p.allT) && p.allT.length>=2){
+      const mid = Math.ceil(p.allT.length/2);
+      sourceGroups["GRUPO A"] = p.allT.slice(0, mid);
+      sourceGroups["GRUPO B"] = p.allT.slice(mid);
+    }
+    const gd={};Object.entries(sourceGroups).forEach(([k,t])=>{gd[k]={teams:t,games:roundRobin(t)};});
     return{...base,groups:gd,qpg:p.qpg,brk:null};
   }
   if(p.fmt==="se"){
@@ -489,6 +495,26 @@ function div(cls, attrsOrChild, ...children){
 function span(cls,txt){ return el("span",{"class":cls},txt); }
 function btn(cls,txt,onclick){ return el("button",{"class":"btn "+cls,onClick:onclick},txt); }
 
+
+function isValidTournament(t) {
+  if (!t || typeof t !== "object") return false;
+  if (!t.title || typeof t.title !== "string") return false;
+  if (!["sg", "mg", "se", "sw"].includes(t.fmt)) return false;
+  if (t.fmt === "sg") return Array.isArray(t.teams) && Array.isArray(t.games);
+  if (t.fmt === "mg") return t.groups && typeof t.groups === "object" && Object.keys(t.groups).length > 0;
+  if (t.fmt === "se") return Array.isArray(t.teams) && Array.isArray(t.brk);
+  if (t.fmt === "sw") return Array.isArray(t.teams) && Array.isArray(t.curG);
+  return false;
+}
+
+function renderBrokenTournamentNotice(t) {
+  const e = div("empty");
+  e.innerHTML = `<div class="ei">⚠️</div><h2>DADOS DO TORNEIO INCOMPLETOS</h2><p>O torneio salvo no banco não tem a estrutura esperada. Entre em Admin → Criar e gere um novo torneio.</p>`;
+  const details = el("pre", {style:{textAlign:"left", maxWidth:"720px", margin:"16px auto 0", padding:"12px", background:"var(--s1)", border:"1px solid var(--border)", borderRadius:"8px", overflow:"auto", color:"var(--muted)", fontSize:"11px"}}, JSON.stringify(t, null, 2));
+  e.appendChild(details);
+  return e;
+}
+
 // ══════════════════════════════════════════════════════════
 //  RENDER
 // ══════════════════════════════════════════════════════════
@@ -496,21 +522,32 @@ function render() {
   const app = document.getElementById("app");
   app.innerHTML = "";
 
-  if (STATE.view === "admin" && !STATE.adminUnlocked) {
-    app.appendChild(renderPinScreen());
-    return;
+  try {
+    if (STATE.view === "admin" && !STATE.adminUnlocked) {
+      app.appendChild(renderPinScreen());
+      return;
+    }
+
+    app.appendChild(renderTopbar());
+    const main = div("main");
+
+    if (STATE.view === "public") {
+      main.appendChild(renderPublic());
+    } else {
+      main.appendChild(renderAdmin());
+    }
+
+    app.appendChild(main);
+  } catch (err) {
+    console.error("Erro ao renderizar a tela:", err);
+    const main = div("main");
+    const card = div("card");
+    card.appendChild(renderCardHead("Erro na tela"));
+    card.appendChild(el("p", {style:{color:"var(--red)", marginBottom:"8px"}}, "Ocorreu um erro ao montar esta tela."));
+    card.appendChild(el("pre", {style:{whiteSpace:"pre-wrap", color:"var(--muted)", fontSize:"12px"}}, String(err && err.stack ? err.stack : err)));
+    main.appendChild(card);
+    app.appendChild(main);
   }
-
-  app.appendChild(renderTopbar());
-  const main = div("main");
-
-  if (STATE.view === "public") {
-    main.appendChild(renderPublic());
-  } else {
-    main.appendChild(renderAdmin());
-  }
-
-  app.appendChild(main);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -605,6 +642,10 @@ function renderPublic() {
     wrap.appendChild(e);
     return wrap;
   }
+  if(!isValidTournament(t)){
+    wrap.appendChild(renderBrokenTournamentNotice(t));
+    return wrap;
+  }
 
   // Title
   wrap.appendChild(el("div",{"class":"page-title"},t.title));
@@ -636,7 +677,7 @@ function renderAdmin() {
   wrap.appendChild(el("div",{"class":"page-title"},"Administração"));
   wrap.appendChild(el("div",{"class":"page-sub"},"gestão do torneio"));
 
-  const t = STATE.tournament;
+  const t = isValidTournament(STATE.tournament) ? STATE.tournament : null;
   const tabs = el("div",{"class":"tabs","style":{"marginBottom":"12px","display":"inline-flex"}});
   const tabDefs = [
     {id:"create",lbl:"➕ Criar"},
