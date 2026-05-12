@@ -510,6 +510,23 @@ function div(cls, attrsOrChild, ...children){
 function span(cls,txt){ return el("span",{"class":cls},txt); }
 function btn(cls,txt,onclick){ return el("button",{"class":"btn "+cls,onClick:onclick},txt); }
 
+function scorePatch(field, val) {
+  if (field === "__score" && val && typeof val === "object") {
+    return {
+      sA: val.sA === "" ? null : +val.sA,
+      sB: val.sB === "" ? null : +val.sB
+    };
+  }
+  return { [field]: val === "" ? null : +val };
+}
+
+function uniqueTeams(t) {
+  const teams = [];
+  if (t?.teams) teams.push(...t.teams);
+  if (t?.groups) Object.values(t.groups).forEach(g => teams.push(...(g.teams || [])));
+  return [...new Set(teams.filter(Boolean))];
+}
+
 
 function isValidTournament(t) {
   if (!t || typeof t !== "object") return false;
@@ -871,6 +888,7 @@ function renderCourtPanel(t) {
 function renderAwardsAdmin(t) {
   const wrap = div("");
   const awards = t.awards || [];
+  const allTeams = uniqueTeams(t);
 
   const card = div("card");
   card.appendChild(renderCardHead("Gerenciar Prêmios"));
@@ -880,16 +898,11 @@ function renderAwardsAdmin(t) {
   const nameInp = el("input",{"class":"inp","placeholder":"Ex: MVP, Melhor Ataque, Fair Play...","style":{flex:"1",minWidth:"160px"}});
   addRow.appendChild(nameInp);
 
-  // Team candidates — all teams in tournament
-  const allTeams = [];
-  if(t.teams) allTeams.push(...t.teams);
-  if(t.groups) Object.values(t.groups).forEach(g=>allTeams.push(...g.teams));
-
   addRow.appendChild(btn("btn-primary btn-sm","+ Criar Prêmio",()=>{
     const name = nameInp.value.trim();
     if(!name) return;
     const newAward = { id: Date.now().toString(), name, candidates: [...allTeams], enabled: true };
-    persistTournament({...t, awards:[...awards, newAward], votes:{...t.votes,[newAward.id]:{}}});
+    persistTournament({...t, awards:[...awards, newAward], votes:{...(t.votes||{}),[newAward.id]:{}}});
     nameInp.value="";
   }));
   card.appendChild(addRow);
@@ -899,23 +912,50 @@ function renderAwardsAdmin(t) {
   }
 
   awards.forEach(award=>{
+    const candidates = award.candidates || [];
     const ac = div("award-card");
-    const hdr = el("div",{"style":{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"8px"}});
+    const hdr = el("div",{"style":{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"8px",marginBottom:"8px",flexWrap:"wrap"}});
     hdr.appendChild(el("div",{"class":"award-title"},`🏅 ${award.name}`));
     const acts = el("div",{"style":{display:"flex",gap:"6px",flexWrap:"wrap"}});
 
-    // Toggle voting
     const votingEnabled = t.votingOpen;
     acts.appendChild(btn(votingEnabled?"btn-danger btn-sm":"btn-blue btn-sm",votingEnabled?"🔒 Fechar Votação":"🗳 Abrir Votação",()=>{
       persistTournament({...t,votingOpen:!votingEnabled});
     }));
     acts.appendChild(btn("btn-danger btn-sm","🗑",()=>{
       const newAwards = awards.filter(a=>a.id!==award.id);
-      const newVotes = {...t.votes}; delete newVotes[award.id];
+      const newVotes = {...(t.votes||{})}; delete newVotes[award.id];
       persistTournament({...t,awards:newAwards,votes:newVotes});
     }));
     hdr.appendChild(acts);
     ac.appendChild(hdr);
+
+    const editBox = el("div",{"style":{padding:"10px",border:"1px solid var(--border)",borderRadius:"7px",background:"var(--bg)",marginBottom:"10px"}});
+    editBox.appendChild(el("div",{"style":{fontSize:"10px",fontWeight:"700",letterSpacing:"1.5px",textTransform:"uppercase",color:"var(--muted)",marginBottom:"8px"}},"Selecionar candidatos deste prêmio"));
+
+    if(!allTeams.length){
+      editBox.appendChild(el("p",{"style":{fontSize:"11px",color:"var(--muted)"}},"Nenhuma equipe disponível no torneio."));
+    } else {
+      const grid = el("div",{"style":{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:"6px"}});
+      allTeams.forEach(team=>{
+        const checked = candidates.includes(team);
+        const opt = el("label",{"style":{display:"flex",alignItems:"center",gap:"8px",padding:"7px 9px",border:"1px solid var(--border)",borderRadius:"6px",background:checked?"var(--accentfade)":"var(--s1)",cursor:"pointer",fontSize:"12px"}});
+        const cb = el("input",{"type":"checkbox"});
+        cb.checked = checked;
+        cb.addEventListener("change",()=>{
+          const current = new Set(candidates);
+          if(cb.checked) current.add(team); else current.delete(team);
+          const updatedAward = {...award, candidates:[...current]};
+          const updatedAwards = awards.map(a=>a.id===award.id?updatedAward:a);
+          persistTournament({...t,awards:updatedAwards});
+        });
+        opt.appendChild(cb);
+        opt.appendChild(el("span",{},team));
+        grid.appendChild(opt);
+      });
+      editBox.appendChild(grid);
+    }
+    ac.appendChild(editBox);
 
     // Vote results
     const awardVotes = t.votes?.[award.id] || {};
@@ -925,7 +965,11 @@ function renderAwardsAdmin(t) {
 
     ac.appendChild(el("div",{"style":{fontSize:"10px",color:"var(--muted)",marginBottom:"6px"}},`${totalVotes} voto${totalVotes!==1?"s":""} registrado${totalVotes!==1?"s":""}`));
 
-    award.candidates.forEach(team=>{
+    if(candidates.length===0){
+      ac.appendChild(el("p",{"style":{fontSize:"11px",color:"var(--red)",marginBottom:"8px"}},"Selecione pelo menos um candidato para este prêmio."));
+    }
+
+    candidates.forEach(team=>{
       const count = tally[team]||0;
       const pct = totalVotes>0?Math.round((count/totalVotes)*100):0;
       const row = el("div",{"class":"vote-option result-mode","style":{"cursor":"default"}});
@@ -1087,7 +1131,7 @@ function renderSingleGroup(t, readOnly) {
   const gc = div("card");
   gc.appendChild(renderCardHead("Jogos — Fase de Grupos"));
   gc.appendChild(renderGameList(t.games, readOnly, t, (id,field,val)=>{
-    const games = t.games.map(g=>g.id===id?{...g,[field]:val===""?null:+val}:g);
+    const games = t.games.map(g=>g.id===id?{...g,...scorePatch(field,val)}:g);
     persistTournament({...t,games});
   }));
   wrap.appendChild(gc);
@@ -1097,12 +1141,12 @@ function renderSingleGroup(t, readOnly) {
     fc.appendChild(renderCardHead("Fase Final"));
     if(mid.length>=2){
       fc.appendChild(renderElimSlot("3º Lugar",mid[0],mid[1],finals.thirdGame?.sA,finals.thirdGame?.sB,"elim-third",readOnly,t,"final-3",(f,v)=>{
-        persistTournament({...t,finals:{...finals,thirdGame:{...finals.thirdGame,[f]:v===""?null:+v}}});
+        persistTournament({...t,finals:{...finals,thirdGame:{...finals.thirdGame,...scorePatch(f,v)}}});
       }));
     }
     if(top2.length===2){
       fc.appendChild(renderElimSlot("Final 🏆",top2[0],top2[1],finals.finalGame?.sA,finals.finalGame?.sB,"elim-final",readOnly,t,"final-f",(f,v)=>{
-        persistTournament({...t,finals:{...finals,finalGame:{...finals.finalGame,[f]:v===""?null:+v}}});
+        persistTournament({...t,finals:{...finals,finalGame:{...finals.finalGame,...scorePatch(f,v)}}});
       }));
     }
     const fw = winner(finals.finalGame?.sA,finals.finalGame?.sB,top2[0],top2[1]);
@@ -1134,7 +1178,7 @@ function renderMultiGroup(t, readOnly) {
     gc.appendChild(renderClassTable(rankings[k],false));
     gc.appendChild(el("hr",{"class":"divider"}));
     gc.appendChild(renderGameList(t.groups[k].games,readOnly,t,(id,field,val)=>{
-      const grp={...t.groups[k],games:t.groups[k].games.map(g=>g.id===id?{...g,[field]:val===""?null:+val}:g)};
+      const grp={...t.groups[k],games:t.groups[k].games.map(g=>g.id===id?{...g,...scorePatch(field,val)}:g)};
       persistTournament({...t,groups:{...t.groups,[k]:grp}});
     },k));
     twoCol.appendChild(gc);
@@ -1180,7 +1224,7 @@ function renderSingleElim(t, readOnly) {
     tc.appendChild(renderCardHead("3º Lugar"));
     const tp = t.tp||{sA:null,sB:null};
     tc.appendChild(renderElimSlot("3º Lugar",semiLosers[0],semiLosers[1],tp.sA,tp.sB,"elim-third",readOnly,t,"tp",(f,v)=>{
-      persistTournament({...t,tp:{...tp,[f]:v===""?null:+v}});
+      persistTournament({...t,tp:{...tp,...scorePatch(f,v)}});
     }));
     const tw = winner(tp.sA,tp.sB,semiLosers[0],semiLosers[1]);
     if(fw||tw) tc.appendChild(renderPodium(fw,fl,tw));
@@ -1208,7 +1252,7 @@ function renderSwiss(t, readOnly) {
   const gc = div("card");
   gc.appendChild(renderCardHead(`Rodada ${t.round}`));
   gc.appendChild(renderGameList(t.curG||[],readOnly,t,(id,field,val)=>{
-    const curG = t.curG.map(g=>g.id===id?{...g,[field]:val===""?null:+val}:g);
+    const curG = t.curG.map(g=>g.id===id?{...g,...scorePatch(field,val)}:g);
     persistTournament({...t,curG});
   }));
   if(!readOnly&&allPlayed&&t.round<t.swR){
@@ -1294,7 +1338,7 @@ function renderGameRow(g, readOnly, t, key, onScore) {
   } else {
     const inA = el("input",{"class":"g-score-inp","type":"number","min":"0","value":g.sA!==null?String(g.sA):""});
     const inB = el("input",{"class":"g-score-inp","type":"number","min":"0","value":g.sB!==null?String(g.sB):""});
-    const commit=()=>{ if(inA.value!==""&&inB.value!==""){onScore(g.id,"sA",inA.value);onScore(g.id,"sB",inB.value);} };
+    const commit=()=>{ if(inA.value!==""&&inB.value!==""){ onScore(g.id,"__score",{sA:inA.value,sB:inB.value}); } };
     inA.addEventListener("blur",commit); inB.addEventListener("blur",commit);
     inA.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key==="Tab"){e.preventDefault();inB.focus();}});
     inB.addEventListener("keydown",e=>{if(e.key==="Enter")commit();});
@@ -1327,7 +1371,7 @@ function renderElimSlot(label, a, b, sA, sB, cls, readOnly, t, key, onScore) {
   } else {
     const inA=el("input",{"class":"g-score-inp","type":"number","min":"0","value":sA!==null?String(sA):""});
     const inB=el("input",{"class":"g-score-inp","type":"number","min":"0","value":sB!==null?String(sB):""});
-    const commit=()=>{if(inA.value!==""&&inB.value!==""){onScore("sA",inA.value);onScore("sB",inB.value);}};
+    const commit=()=>{if(inA.value!==""&&inB.value!==""){onScore("__score",{sA:inA.value,sB:inB.value});}};
     inA.addEventListener("blur",commit);inB.addEventListener("blur",commit);
     inA.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key==="Tab"){e.preventDefault();inB.focus();}});
     inB.addEventListener("keydown",e=>{if(e.key==="Enter")commit();});
@@ -1349,7 +1393,7 @@ function renderBracket(rounds, readOnly, t, onUpdate) {
       const key=`${t.fmt==="se"?"se":"br"}-${rnd.rn}-${gi}`;
       wrap.appendChild(renderElimSlot(`J${gi+1}`,g.a,g.b,g.sA,g.sB,rnd.name==="Final 🏆"?"elim-final":rnd.name==="Semifinal"?"elim-semi":"",readOnly,t,key,(field,val)=>{
         const r=JSON.parse(JSON.stringify(rounds));
-        r[ri].games[gi][field]=val===""?null:+val;
+        Object.assign(r[ri].games[gi], scorePatch(field,val));
         onUpdate(propagateBracket(r));
       }));
     });
