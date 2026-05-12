@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Torneio Pro</title>
+<title>Torneio Pro - v3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
 <style>
@@ -443,20 +443,34 @@ async function persistTournament(t) {
 }
 
 let pollInterval = null;
+function shouldDeferPollingRender() {
+  // Evita que o polling redesenhe a tela enquanto o administrador está digitando
+  // no formulário de criação. Isso impedia a digitação e podia deixar a área vazia
+  // quando havia dados antigos/inválidos no Firebase.
+  return STATE.view === "admin" && STATE.adminUnlocked && STATE.adminTab === "create";
+}
+
 async function startPolling() {
   const data = await dbLoad();
-  if (data && data.tournament) {
+  if (data && data.tournament && isValidTournament(data.tournament)) {
     STATE.tournament = data.tournament;
     STATE.lastUpdated = data.updatedAt;
-    render();
+    if (!shouldDeferPollingRender()) render();
+  } else if (data && data.tournament && !isValidTournament(data.tournament)) {
+    console.warn("Torneio salvo inválido ignorado:", data.tournament);
+    STATE.tournament = null;
   }
   if (pollInterval) clearInterval(pollInterval);
   pollInterval = setInterval(async () => {
     const d = await dbLoad();
-    if (d && d.tournament) {
+    if (d && d.tournament && isValidTournament(d.tournament)) {
       STATE.tournament = d.tournament;
       STATE.lastUpdated = d.updatedAt;
-      render();
+      if (!shouldDeferPollingRender()) render();
+    } else if (d && d.tournament && !isValidTournament(d.tournament)) {
+      console.warn("Torneio salvo inválido ignorado:", d.tournament);
+      STATE.tournament = null;
+      if (!shouldDeferPollingRender()) render();
     }
   }, 4000);
 }
@@ -678,6 +692,7 @@ function renderAdmin() {
   wrap.appendChild(el("div",{"class":"page-sub"},"gestão do torneio"));
 
   const t = isValidTournament(STATE.tournament) ? STATE.tournament : null;
+  if (!t && STATE.adminTab !== "create") STATE.adminTab = "create";
   const tabs = el("div",{"class":"tabs","style":{"marginBottom":"12px","display":"inline-flex"}});
   const tabDefs = [
     {id:"create",lbl:"➕ Criar"},
