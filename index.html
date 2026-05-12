@@ -425,6 +425,7 @@ let STATE = {
   lastUpdated: null,
   adminTab: "manage",  // "manage" | "court" | "awards" | "create"
   voteId: {},          // { awardId: teamVotedFor } per session
+  createDraft: { text: "", title: "", teams: "", fmt: "sg" },
 };
 
 function setState(patch) {
@@ -444,10 +445,9 @@ async function persistTournament(t) {
 
 let pollInterval = null;
 function shouldDeferPollingRender() {
-  // Evita que o polling redesenhe a tela enquanto o administrador está digitando
-  // no formulário de criação. Isso impedia a digitação e podia deixar a área vazia
-  // quando havia dados antigos/inválidos no Firebase.
-  return STATE.view === "admin" && STATE.adminUnlocked && STATE.adminTab === "create";
+  // Enquanto o Admin está aberto, o polling não deve redesenhar nem sobrescrever o estado.
+  // Em especial na aba Criar, qualquer render automático recria os inputs e apaga o texto digitado.
+  return STATE.view === "admin" && STATE.adminUnlocked;
 }
 
 async function startPolling() {
@@ -462,6 +462,7 @@ async function startPolling() {
   }
   if (pollInterval) clearInterval(pollInterval);
   pollInterval = setInterval(async () => {
+    if (shouldDeferPollingRender()) return;
     const d = await dbLoad();
     if (d && d.tournament && isValidTournament(d.tournament)) {
       STATE.tournament = d.tournament;
@@ -732,6 +733,7 @@ function renderAdminCreate() {
       const all = p.allT.length?p.allT:Object.values(p.groups).flat();
       if(all.length<2){errEl.textContent="Adicione pelo menos 2 equipes.";return;}
       if(!p.title){errEl.textContent="Informe o título com 'Título: ...'";return;}
+      STATE.createDraft = { text: "", title: "", teams: "", fmt: "sg" };
       persistTournament(buildTournament(p));
       setState({adminTab:"manage"});
     })
@@ -742,17 +744,19 @@ function renderAdminCreate() {
   const card2 = div("card");
   card2.appendChild(renderCardHead("Criar manualmente"));
 
-  const titleInp = el("input",{"class":"inp","placeholder":"Nome do torneio","style":{"marginBottom":"10px"}});
+  const titleInp = el("input",{"class":"inp","placeholder":"Nome do torneio","style":{"marginBottom":"10px"}, onInput:(ev)=>{ STATE.createDraft.title = ev.target.value; }});
+  titleInp.value = STATE.createDraft.title || "";
   card2.appendChild(el("label",{"class":"lbl"},"Título"));
   card2.appendChild(titleInp);
 
   card2.appendChild(el("label",{"class":"lbl","style":{"marginTop":"12px"}},"Formato"));
   const fmtGrid = div("fmt-grid");
   const fmts = [{id:"sg",icon:"⬛",name:"Grupo Único",desc:"Todos contra todos"},{id:"mg",icon:"⬛⬛",name:"Múlt. Grupos",desc:"Grupos + eliminatórias"},{id:"se",icon:"🔱",name:"Mata-Mata",desc:"Chaveamento direto"},{id:"sw",icon:"🇨🇭",name:"Suíço",desc:"Rodadas por pontuação"}];
-  let selFmt = "sg";
+  let selFmt = STATE.createDraft.fmt || "sg";
   fmts.forEach(f=>{
     const fc = el("div",{"class":"fmt-card"+(selFmt===f.id?" sel":""),onClick:()=>{
       selFmt=f.id;
+      STATE.createDraft.fmt = f.id;
       fmtGrid.querySelectorAll(".fmt-card").forEach((c,i)=>c.className="fmt-card"+(fmts[i].id===f.id?" sel":""));
     }});
     fc.innerHTML=`<div class="fi">${f.icon}</div><div class="fn">${f.name}</div><div class="fd">${f.desc}</div>`;
@@ -761,7 +765,8 @@ function renderAdminCreate() {
   card2.appendChild(fmtGrid);
 
   card2.appendChild(el("label",{"class":"lbl"},"Equipes (separadas por vírgula)"));
-  const teamsInp = el("textarea",{"class":"textarea","style":{"minHeight":"70px"},"placeholder":"Alpha, Beta, Gamma, Delta..."});
+  const teamsInp = el("textarea",{"class":"textarea","style":{"minHeight":"70px"},"placeholder":"Alpha, Beta, Gamma, Delta...", onInput:(ev)=>{ STATE.createDraft.teams = ev.target.value; }});
+  teamsInp.value = STATE.createDraft.teams || "";
   card2.appendChild(teamsInp);
 
   const err2 = div("err");
@@ -772,6 +777,7 @@ function renderAdminCreate() {
       const teams = teamsInp.value.split(",").map(s=>s.trim()).filter(Boolean);
       if(!title){err2.textContent="Informe o título.";return;}
       if(teams.length<2){err2.textContent="Adicione pelo menos 2 equipes.";return;}
+      STATE.createDraft = { text: "", title: "", teams: "", fmt: "sg" };
       persistTournament(buildTournament({title,fmt:selFmt,groups:{},allT:teams,qpg:2,swR:4}));
       setState({adminTab:"manage"});
     })
