@@ -49,8 +49,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); min-
 .main { flex: 1; max-width: 880px; margin: 0 auto; width: 100%; padding: 16px; }
 
 /* ── TABS ── */
-.tabs { display: flex; background: var(–bg); border: 1px solid var(–border); border-radius: 8px; padding: 3px; gap: 2px; }
-.tab { padding: 5px 14px; border-radius: 5px; border: none; cursor: pointer; font-size: 12px; font-family: var(–font); font-weight: 600; letter-spacing: .3px; color: var(–muted); background: transparent; transition: all .15s; white-space: nowrap; }
+.tabs { display: flex; background: var(–bg); border: 1px solid var(–border); border-radius: 8px; padding: 6px; gap: 4px; flex-wrap: wrap; }
+.tab { padding: 12px 20px; border-radius: 5px; border: none; cursor: pointer; font-size: 16px; font-family: var(–font); font-weight: 600; letter-spacing: .3px; color: var(–text); background: transparent; transition: all .15s; white-space: nowrap; min-height: 44px; display: flex; align-items: center; justify-content: center; }
 .tab.on { background: var(–accent); color: #000; }
 .tab:not(.on):hover { color: var(–text); }
 
