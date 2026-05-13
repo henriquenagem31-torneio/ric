@@ -342,11 +342,29 @@ function swissPair(teams, prevGames, standing) {
   return games;
 }
 
+function normalizeGameKey(key) {
+  if (!key) return key;
+  // Compatibilidade com versões anteriores, que salvavam Grupo-1 em vez de sg-1.
+  if (String(key).startsWith("Grupo-")) return "sg-" + String(key).slice("Grupo-".length);
+  return key;
+}
+
+function selectedGame(games, key) {
+  if (!key) return null;
+  const k = normalizeGameKey(key);
+  return games.find(g => g.key === key) || games.find(g => g.key === k) || null;
+}
+
 function getAllGames(t) {
   if (!t) return [];
   const res = [];
-  const push=(g,ctx,key)=>res.push({...g,ctx,key:key||`${ctx}-${g.id}`});
-  if(t.fmt==="sg") t.games?.forEach(g=>push(g,"Grupo"));
+  const push=(g,ctx,key)=>{
+    if (!g) return;
+    res.push({...g,ctx,key:key||`${ctx}-${g.id}`});
+  };
+  // As chaves precisam ser exatamente as mesmas usadas na lista de jogos;
+  // caso contrário, o jogo selecionado em Quadra/Próximo não aparece no Público.
+  if(t.fmt==="sg") t.games?.forEach(g=>push(g,"Grupo",`sg-${g.id}`));
   if(t.fmt==="mg"||t.fmt==="mgk"){
     Object.entries(t.groups||{}).forEach(([k,grp])=>grp.games.forEach(g=>push(g,k,`g-${k}-${g.id}`)));
     t.brk?.forEach(r=>r.games.forEach((g,i)=>push(g,r.name,`br-${r.rn}-${i}`)));
@@ -356,8 +374,8 @@ function getAllGames(t) {
     if(t.tp) push({...t.tp,id:"TP"},"3º Lugar","tp");
   }
   if(t.fmt==="sw"){
-    t.curG?.forEach(g=>push(g,`Rodada ${t.round}`));
-    t.allG?.forEach(g=>push(g,"Anteriores"));
+    t.curG?.forEach(g=>push(g,`Rodada ${t.round}`,`sw-cur-${g.id}`));
+    t.allG?.forEach(g=>push(g,"Anteriores",`sw-all-${g.id}`));
   }
   if(t.finals?.thirdGame) push({...t.finals.thirdGame,id:"F3"},"3º Lugar","final-3");
   if(t.finals?.finalGame) push({...t.finals.finalGame,id:"FF"},"Final 🏆","final-f");
@@ -825,8 +843,8 @@ function renderAdminManage(t) {
 function renderCourtPanel(t) {
   const wrap = div("");
   const games = getAllGames(t);
-  const liveG = games.find(g=>g.key===t.liveId);
-  const nextG = games.find(g=>g.key===t.nextId);
+  const liveG = selectedGame(games, t.liveId);
+  const nextG = selectedGame(games, t.nextId);
 
   // Status card
   const statusCard = div("card");
@@ -860,7 +878,7 @@ function renderCourtPanel(t) {
   Object.entries(byCtx).forEach(([ctx,ctxGames])=>{
     pickerCard.appendChild(el("div",{"class":"section-lbl"},ctx));
     ctxGames.forEach(g=>{
-      const isLive=g.key===t.liveId, isNext=g.key===t.nextId;
+      const isLive=g.key===normalizeGameKey(t.liveId), isNext=g.key===normalizeGameKey(t.nextId);
       const isDone=g.sA!==null&&g.sB!==null;
       const row = el("div",{"style":{display:"flex",alignItems:"center",gap:"8px",padding:"7px 8px",borderRadius:"6px",marginBottom:"4px",background:isLive?"rgba(0,229,160,.08)":isNext?"rgba(61,142,255,.06)":"transparent",border:`1px solid ${isLive?"rgba(0,229,160,.4)":isNext?"rgba(61,142,255,.3)":"var(--border)"}`,opacity:isDone&&!isLive?"0.5":"1",transition:"all .15s"}});
       row.appendChild(el("span",{"style":{fontFamily:"var(--mono)",fontSize:"9px",color:"var(--muted)",minWidth:"20px"}},`#${g.id}`));
@@ -1063,8 +1081,8 @@ function getSessionId() {
 function renderCourtBanners(t) {
   const wrap = div("");
   const games = getAllGames(t);
-  const liveG = games.find(g=>g.key===t.liveId);
-  const nextG = games.find(g=>g.key===t.nextId);
+  const liveG = selectedGame(games, t.liveId);
+  const nextG = selectedGame(games, t.nextId);
   if(!liveG&&!nextG) return wrap;
 
   if(liveG){
@@ -1319,7 +1337,7 @@ function renderGameList(games, readOnly, t, onScore, groupKey) {
 function renderGameRow(g, readOnly, t, key, onScore) {
   const done = g.sA!==null&&g.sB!==null;
   const aW = done&&+g.sA>+g.sB, bW = done&&+g.sB>+g.sA;
-  const isLive = key===t?.liveId, isNext = key===t?.nextId;
+  const isLive = key===normalizeGameKey(t?.liveId), isNext = key===normalizeGameKey(t?.nextId);
   const cls = `game-row ${isLive?"is-live":isNext?"is-next":done?"done":"pending"}`;
   const row = el("div",{"class":cls});
 
@@ -1359,7 +1377,7 @@ function renderGameRow(g, readOnly, t, key, onScore) {
 function renderElimSlot(label, a, b, sA, sB, cls, readOnly, t, key, onScore) {
   const done=sA!==null&&sB!==null;
   const aW=done&&+sA>+sB, bW=done&&+sB>+sA;
-  const isLive=key===t?.liveId, isNext=key===t?.nextId;
+  const isLive=key===normalizeGameKey(t?.liveId), isNext=key===normalizeGameKey(t?.nextId);
   const slot = el("div",{"class":`elim-slot ${cls}${isLive?" is-live":isNext?" is-next":""}`});
   slot.appendChild(el("span",{"class":"elim-lbl"},label));
   slot.appendChild(el("span",{"class":"g-team"+(aW?" winner":"")},a||"—"));
