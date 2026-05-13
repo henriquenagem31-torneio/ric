@@ -259,7 +259,33 @@ label.lbl { display: block; font-size: 10px; font-weight: 600; letter-spacing: 1
 .ref-timeout-alert{font-size:11px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;margin-top:5px;}
 @media(max-width:580px){.ref-filter{position:sticky;top:72px;z-index:80;background:var(--bg);padding:8px 0;margin-top:6px}.ref-filter-btn{flex:1;min-width:72px;padding:11px 8px}.topbar{padding:8px}.logo span{font-size:18px}.logo small{display:none}.tabs{gap:3px;padding:4px}.tab{font-size:13px;padding:10px 9px}.main{padding:10px}.ref-card{border-radius:14px;padding:14px 10px}.ref-scoreboard{grid-template-columns:1fr 34px 1fr}.ref-team-name{font-size:18px}.ref-points{font-size:64px}.ref-vs{font-size:40px}.ref-plus,.ref-minus{width:52px;height:52px}.ref-actions .btn{width:100%;justify-content:center;padding:12px 16px}}
 
-@media(max-width:580px){.ref-timeout-actions{grid-template-columns:1fr}.ref-timeout-clock{font-size:42px}.ref-timeout-btn{width:100%;}}</style>
+@media(max-width:580px){.ref-timeout-actions{grid-template-columns:1fr}.ref-timeout-clock{font-size:42px}.ref-timeout-btn{width:100%;}}
+
+/* V18 — modo arbitragem em celular landscape: placar em fullscreen */
+@media (orientation: landscape) and (max-height: 580px) {
+  body.ref-landscape-mode { overflow: hidden; background: #000; }
+  body.ref-landscape-mode .topbar,
+  body.ref-landscape-mode .page-title,
+  body.ref-landscape-mode .page-sub,
+  body.ref-landscape-mode .ref-filter,
+  body.ref-landscape-mode .ref-context,
+  body.ref-landscape-mode .ref-timeout-panel,
+  body.ref-landscape-mode .ref-actions,
+  body.ref-landscape-mode .ref-next { display: none !important; }
+  body.ref-landscape-mode .main { max-width: none; width: 100vw; height: 100vh; padding: 0; margin: 0; }
+  body.ref-landscape-mode .ref-wrap { max-width: none; width: 100vw; height: 100vh; }
+  body.ref-landscape-mode .ref-card { width: 100vw; height: 100vh; margin: 0; border: none; border-radius: 0; padding: 8px 14px; display: flex; flex-direction: column; justify-content: center; background: #000; }
+  body.ref-landscape-mode .ref-court { font-size: 20px; margin-bottom: 4px; }
+  body.ref-landscape-mode .ref-scoreboard { grid-template-columns: 1fr 44px 1fr; gap: 8px; height: calc(100vh - 34px); }
+  body.ref-landscape-mode .ref-team { height: 100%; justify-content: center; gap: 5px; }
+  body.ref-landscape-mode .ref-team-name { font-size: clamp(15px, 4.4vw, 28px); }
+  body.ref-landscape-mode .ref-points { font-size: clamp(66px, 23vh, 132px); }
+  body.ref-landscape-mode .ref-vs { font-size: clamp(30px, 10vh, 62px); }
+  body.ref-landscape-mode .ref-plus,
+  body.ref-landscape-mode .ref-minus { width: clamp(42px, 11vh, 64px); height: clamp(42px, 11vh, 64px); font-size: clamp(24px, 7vh, 38px); }
+}
+
+</style>
 
 </head>
 <body>
@@ -592,13 +618,14 @@ function renderTechnicalTimeoutPanel(t, key, g) {
   const panel = div("ref-timeout-panel");
   panel.appendChild(el("div", {"class":"ref-timeout-title"}, "TEMPO TÉCNICO"));
 
-  if (active) {
+  // Exibe o destaque do tempo técnico somente enquanto o relógio está correndo.
+  // Ao chegar em 0, a equipe permanece bloqueada pelo campo aUsed/bUsed,
+  // mas o alerta sai da tela para não ficar permanentemente em destaque.
+  if (active && remaining !== null && remaining > 0) {
     const sideName = active.side === "a" ? safeText(g.a) : safeText(g.b);
-    const expired = remaining !== null && remaining <= 0;
-    const box = div("ref-timeout-active" + (expired ? " done" : ""));
-    box.appendChild(el("div", {"class":"ref-timeout-label"}, expired ? "TEMPO ENCERRADO" : `Tempo de ${sideName}`));
+    const box = div("ref-timeout-active");
+    box.appendChild(el("div", {"class":"ref-timeout-label"}, `Tempo de ${sideName}`));
     box.appendChild(el("div", {"class":"ref-timeout-clock"}, formatTimer(remaining)));
-    if (expired) box.appendChild(el("div", {"class":"ref-timeout-alert"}, "Sinalizar retorno ao jogo"));
     panel.appendChild(box);
   }
 
@@ -908,6 +935,7 @@ function renderBrokenTournamentNotice(t) {
 // ══════════════════════════════════════════════════════════
 function render() {
   const app = document.getElementById("app");
+  document.body.classList.toggle("ref-landscape-mode", STATE.view === "ref" && STATE.refUnlocked && !!STATE.refCourtFilter);
   app.innerHTML = "";
 
   try {
