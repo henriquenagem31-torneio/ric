@@ -231,6 +231,7 @@ label.lbl { display: block; font-size: 10px; font-weight: 600; letter-spacing: 1
 <div id="app"></div>
 
 <script>
+
 // ══════════════════════════════════════════════════════════
 //  STORAGE  (Firebase Realtime DB — free tier, no login)
 //  We use a public read/write DB key stored in the app.
@@ -355,6 +356,111 @@ function selectedGame(games, key) {
   return games.find(g => g.key === key) || games.find(g => g.key === k) || null;
 }
 
+
+function normalizeCourtLabel(v, fallback) {
+  const raw = (v === undefined || v === null || v === "") ? fallback : v;
+  const s = String(raw).trim();
+  return s || String(fallback);
+}
+
+function courtLabel(c) {
+  return normalizeCourtLabel(c?.label ?? c?.id ?? c?.n, "-");
+}
+
+function getCourts(t) {
+  const legacy = [{ id: "1", label: "1", n: 1, liveId: t?.liveId || null, nextId: t?.nextId || null }];
+  const base = Array.isArray(t?.courts) && t.courts.length ? t.courts : legacy;
+  return base.map((c, i) => {
+    const label = normalizeCourtLabel(c?.label ?? c?.id ?? c?.n, i + 1);
+    return {
+      id: label,
+      label,
+      n: Number.isFinite(Number(c?.n)) ? Number(c.n) : i + 1,
+      liveId: c?.liveId ? normalizeGameKey(c.liveId) : null,
+      nextId: c?.nextId ? normalizeGameKey(c.nextId) : null
+    };
+  });
+}
+
+function withCourtCount(t, count) {
+  const n = Math.max(1, Math.min(12, Number(count) || 1));
+  const current = getCourts(t);
+  const courts = [];
+  for (let i = 0; i < n; i++) courts.push(current[i] || { id: String(i + 1), label: String(i + 1), n: i + 1, liveId: null, nextId: null });
+  return { ...t, courts: courts.map((c, i) => ({ ...c, n: i + 1 })), liveId: null, nextId: null };
+}
+
+function parseCourtLabels(txt) {
+  const labels = String(txt || "")
+    .split(/[,;\n]+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  const seen = new Set();
+  return labels.filter(l => {
+    const k = l.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).slice(0, 12);
+}
+
+function withCourtLabels(t, labelsText) {
+  const labels = parseCourtLabels(labelsText);
+  if (!labels.length) return t;
+  const current = getCourts(t);
+  const courts = labels.map((label, i) => {
+    const prev = current.find(c => courtLabel(c).toLowerCase() === label.toLowerCase()) || current[i];
+    return {
+      id: label,
+      label,
+      n: i + 1,
+      liveId: prev?.liveId || null,
+      nextId: prev?.nextId || null
+    };
+  });
+  return { ...t, courts, liveId: null, nextId: null };
+}
+
+function setCourtGame(t, courtId, slot, key) {
+  const k = key ? normalizeGameKey(key) : null;
+  const id = String(courtId);
+  const courts = getCourts(t).map(c => ({ ...c }));
+  let c = courts.find(x => String(x.id) === id || courtLabel(x) === id);
+  if (!c) { c = { id, label: id, n: courts.length + 1, liveId: null, nextId: null }; courts.push(c); }
+  const field = slot === "live" ? "liveId" : "nextId";
+  c[field] = c[field] === k ? null : k;
+  return { ...t, courts: courts.map((c, i) => ({ ...c, n: i + 1 })), liveId: null, nextId: null };
+}
+
+function clearCourts(t) {
+  return { ...t, courts: getCourts(t).map((c, i) => ({ ...c, n: i + 1, liveId: null, nextId: null })), liveId: null, nextId: null };
+}
+
+function courtAssignmentsFor(t, key) {
+  const k = normalizeGameKey(key);
+  const live = [], next = [];
+  getCourts(t).forEach(c => {
+    if (normalizeGameKey(c.liveId) === k) live.push(courtLabel(c));
+    if (normalizeGameKey(c.nextId) === k) next.push(courtLabel(c));
+  });
+  return { live, next };
+}
+
+function firstCourtAssignment(t, key) {
+  const a = courtAssignmentsFor(t, key);
+  if (a.live.length) return { type: "live", courts: a.live };
+  if (a.next.length) return { type: "next", courts: a.next };
+  return null;
+}
+
+function selectedGamesByCourt(games, t) {
+  return getCourts(t).map(c => ({
+    ...c,
+    liveGame: selectedGame(games, c.liveId),
+    nextGame: selectedGame(games, c.nextId)
+  }));
+}
+
 function getAllGames(t) {
   if (!t) return [];
   const res = [];
@@ -406,7 +512,7 @@ function parseText(txt) {
 }
 
 function buildTournament(p) {
-  const base={title:p.title,fmt:p.fmt,liveId:null,nextId:null,awards:[],votes:{},votingOpen:false,createdAt:Date.now()};
+  const base={title:p.title,fmt:p.fmt,liveId:null,nextId:null,courts:[{id:"1",label:"1",n:1,liveId:null,nextId:null}],awards:[],votes:{},votingOpen:false,createdAt:Date.now()};
   if(p.fmt==="sg") return{...base,teams:p.allT,games:roundRobin(p.allT),finals:null};
   if(p.fmt==="mg"){
     const sourceGroups = {...(p.groups||{})};
@@ -871,55 +977,71 @@ function renderAdminManage(t) {
 function renderCourtPanel(t) {
   const wrap = div("");
   const games = getAllGames(t);
-  const liveG = selectedGame(games, t.liveId);
-  const nextG = selectedGame(games, t.nextId);
+  const courts = getCourts(t);
+  const selected = selectedGamesByCourt(games, t);
 
-  // Status card
+  const cfg = div("card");
+  cfg.appendChild(renderCardHead("Configuração das Quadras"));
+  const cfgRow = el("div", { "style": { display:"flex", alignItems:"center", gap:"10px", flexWrap:"wrap" } });
+  cfgRow.appendChild(el("label", { "class":"lbl", "style": { marginBottom:"0" } }, "Quadras usadas"));
+  const labelsInp = el("input", { "class":"inp", "type":"text", "value": courts.map(courtLabel).join(", "), "placeholder":"Ex: 2, 5, 6, 8", "style": { flex:"1", minWidth:"220px" } });
+  cfgRow.appendChild(labelsInp);
+  cfgRow.appendChild(btn("btn-ghost btn-sm", "Aplicar", () => persistTournament(withCourtLabels(t, labelsInp.value))));
+  cfgRow.appendChild(btn("btn-ghost btn-sm", "✕ Limpar todas", () => persistTournament(clearCourts(t))));
+  cfg.appendChild(cfgRow);
+  cfg.appendChild(el("p", { "style": { fontSize:"11px", color:"var(--muted)", marginTop:"8px" } }, "Digite os números ou nomes reais das quadras separados por vírgula. Ex.: 2, 5, 6, 8. Cada quadra pode ter um jogo em andamento e um próximo jogo."));
+  wrap.appendChild(cfg);
+
   const statusCard = div("card");
-  statusCard.appendChild(renderCardHead("Status Atual"));
-  const row = div("two-col");
-  [{g:liveG,color:"var(--accent)",dotClass:"live-dot",label:"🟢 Em Quadra",emptyLbl:"Nenhum jogo selecionado"},{g:nextG,color:"var(--blue)",dotClass:"",label:"🔵 Próximo Jogo",emptyLbl:"Nenhum jogo selecionado"}].forEach(({g,color,label,emptyLbl})=>{
-    const box = el("div",{"style":{padding:"10px 12px",background:g?`rgba(${color==="var(--accent)"?"0,229,160":"61,142,255"},.1)`:"var(--s1)",border:`1px solid ${g?color+"66":"var(--border)"}`,borderRadius:"7px"}});
-    box.appendChild(el("div",{"style":{fontSize:"9px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase",color:g?color:"var(--muted)",marginBottom:"5px"}},label));
-    box.appendChild(el("div",{"style":{fontSize:"13px",fontWeight:"600",color:g?"var(--text)":"var(--muted)"}},g?`${safeText(g.a)} × ${safeText(g.b)}`:emptyLbl));
-    if(g) box.appendChild(el("div",{"style":{fontSize:"10px",color:color,marginTop:"3px"}},g.ctx));
-    row.appendChild(box);
+  statusCard.appendChild(renderCardHead("Status por Quadra"));
+  const grid = el("div", { "style": { display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:"8px" } });
+  selected.forEach(c => {
+    const label = courtLabel(c);
+    const box = el("div", { "style": { padding:"10px 12px", background:"var(--s1)", border:"1px solid var(--border)", borderRadius:"8px" } });
+    box.appendChild(el("div", { "style": { fontFamily:"var(--display)", fontSize:"16px", letterSpacing:"2px", color:"var(--text)", marginBottom:"8px" } }, `QUADRA ${label}`));
+    const liveLine = el("div", { "style": { fontSize:"12px", marginBottom:"5px", color:c.liveGame?"var(--accent)":"var(--muted)" } }, `🟢 Em quadra: ${c.liveGame ? safeText(c.liveGame.a)+" × "+safeText(c.liveGame.b) : "-"}`);
+    const nextLine = el("div", { "style": { fontSize:"12px", color:c.nextGame?"var(--blue)":"var(--muted)" } }, `🔵 Próximo: ${c.nextGame ? safeText(c.nextGame.a)+" × "+safeText(c.nextGame.b) : "-"}`);
+    box.appendChild(liveLine);
+    box.appendChild(nextLine);
+    grid.appendChild(box);
   });
-  statusCard.appendChild(row);
-  if(liveG||nextG){
-    statusCard.appendChild(el("div",{"style":{"marginTop":"10px"}},
-      btn("btn-ghost btn-sm","✕ Limpar seleção",()=>persistTournament({...t,liveId:null,nextId:null}))
-    ));
-  }
+  statusCard.appendChild(grid);
   wrap.appendChild(statusCard);
 
-  // Game picker
   const pickerCard = div("card");
-  pickerCard.appendChild(renderCardHead("Selecionar Jogo"));
-  pickerCard.appendChild(el("p",{"style":{fontSize:"11px",color:"var(--muted)",marginBottom:"10px"}},
-    "Use os botões 🟢 Quadra ou 🔵 Próximo à direita de cada jogo. Também é possível selecionar jogos já finalizados."
-  ));
+  pickerCard.appendChild(renderCardHead("Atribuir Jogos às Quadras"));
+  pickerCard.appendChild(el("p", { "style": { fontSize:"11px", color:"var(--muted)", marginBottom:"10px" } }, "Use os botões com o número real da quadra para marcar o jogo como Em Quadra ou Próximo."));
 
   const byCtx = {};
-  games.forEach(g=>{ if(!byCtx[g.ctx]) byCtx[g.ctx]=[]; byCtx[g.ctx].push(g); });
+  games.forEach(g => { if(!byCtx[g.ctx]) byCtx[g.ctx]=[]; byCtx[g.ctx].push(g); });
 
-  Object.entries(byCtx).forEach(([ctx,ctxGames])=>{
-    pickerCard.appendChild(el("div",{"class":"section-lbl"},ctx));
-    ctxGames.forEach(g=>{
-      const isLive=g.key===normalizeGameKey(t.liveId), isNext=g.key===normalizeGameKey(t.nextId);
-      const isDone=g.sA!==null&&g.sB!==null;
-      const row = el("div",{"style":{display:"flex",alignItems:"center",gap:"8px",padding:"7px 8px",borderRadius:"6px",marginBottom:"4px",background:isLive?"rgba(0,229,160,.08)":isNext?"rgba(61,142,255,.06)":"transparent",border:`1px solid ${isLive?"rgba(0,229,160,.4)":isNext?"rgba(61,142,255,.3)":"var(--border)"}`,opacity:"1",transition:"all .15s"}});
-      row.appendChild(el("span",{"style":{fontFamily:"var(--mono)",fontSize:"9px",color:"var(--muted)",minWidth:"20px"}},`#${g.id}`));
-      row.appendChild(el("span",{"style":{flex:"1",fontSize:"12px",fontWeight:"500"}},safeText(g.a)));
-      row.appendChild(el("span",{"style":{fontSize:"10px",color:"var(--muted)"}},"×"));
-      row.appendChild(el("span",{"style":{flex:"1",fontSize:"12px",fontWeight:"500",textAlign:"right"}},safeText(g.b)));
-      if(isDone) row.appendChild(el("span",{"style":{fontFamily:"var(--mono)",fontSize:"10px",color:"var(--muted)"}},`${g.sA}–${g.sB}`));
-      const acts = div("court-pick");
-      const bl = el("button",{"class":"cp-btn cp-live"+(isLive?" on":""),onClick:(ev)=>{ev.stopPropagation();persistTournament({...t,liveId:isLive?null:g.key});}},isLive?"✓ Quadra":"🟢 Quadra");
-      const bn2 = el("button",{"class":"cp-btn cp-next"+(isNext?" on":""),onClick:(ev)=>{ev.stopPropagation();persistTournament({...t,nextId:isNext?null:g.key});}},isNext?"✓ Próximo":"🔵 Próximo");
-      acts.appendChild(bl); acts.appendChild(bn2);
+  Object.entries(byCtx).forEach(([ctx, ctxGames]) => {
+    pickerCard.appendChild(el("div", { "class":"section-lbl" }, ctx));
+    ctxGames.forEach(g => {
+      const asg = courtAssignmentsFor(t, g.key);
+      const isLive = asg.live.length > 0;
+      const isNext = asg.next.length > 0;
+      const isDone = hasScorePair(g.sA, g.sB);
+      const row = el("div", { "style": { display:"grid", gridTemplateColumns:"38px 1fr auto", gap:"8px", alignItems:"center", padding:"8px", borderRadius:"7px", marginBottom:"6px", background:isLive?"rgba(0,229,160,.08)":isNext?"rgba(61,142,255,.06)":"transparent", border:`1px solid ${isLive?"rgba(0,229,160,.4)":isNext?"rgba(61,142,255,.3)":"var(--border)"}` } });
+      row.appendChild(el("span", { "style": { fontFamily:"var(--mono)", fontSize:"9px", color:"var(--muted)" } }, `#${safeText(g.id)}`));
+      const title = el("div", { "style": { fontSize:"12px", fontWeight:"600" } }, `${safeText(g.a)} × ${safeText(g.b)}`);
+      if(isDone) title.appendChild(el("span", { "style": { fontFamily:"var(--mono)", fontSize:"10px", color:"var(--muted)", marginLeft:"8px" } }, `${safeScore(g.sA)}–${safeScore(g.sB)}`));
+      if(asg.live.length) title.appendChild(el("span", { "class":"g-badge live-badge", "style": { marginLeft:"8px" } }, `QUADRA ${asg.live.join(",")}`));
+      if(asg.next.length) title.appendChild(el("span", { "class":"g-badge next-badge", "style": { marginLeft:"8px" } }, `PRÓX ${asg.next.join(",")}`));
+      row.appendChild(title);
+      const acts = el("div", { "style": { display:"flex", flexDirection:"column", gap:"4px" } });
+      const liveBtns = div("court-pick");
+      const nextBtns = div("court-pick");
+      courts.forEach(c => {
+        const label = courtLabel(c);
+        const liveOn = normalizeGameKey(c.liveId) === normalizeGameKey(g.key);
+        const nextOn = normalizeGameKey(c.nextId) === normalizeGameKey(g.key);
+        liveBtns.appendChild(el("button", { "class":"cp-btn cp-live"+(liveOn?" on":""), onClick:()=>persistTournament(setCourtGame(t, c.id, "live", g.key)) }, `🟢 Q${label}`));
+        nextBtns.appendChild(el("button", { "class":"cp-btn cp-next"+(nextOn?" on":""), onClick:()=>persistTournament(setCourtGame(t, c.id, "next", g.key)) }, `🔵 Q${label}`));
+      });
+      acts.appendChild(liveBtns);
+      acts.appendChild(nextBtns);
       row.appendChild(acts);
-      row.addEventListener("click",()=>persistTournament({...t,liveId:isLive?null:g.key}));
       pickerCard.appendChild(row);
     });
   });
@@ -1172,44 +1294,49 @@ function getSessionId() {
 function renderCourtBanners(t) {
   const wrap = div("");
   const games = getAllGames(t);
-  const liveG = selectedGame(games, t.liveId);
-  const nextG = selectedGame(games, t.nextId);
-  if(!liveG&&!nextG) return wrap;
+  const courts = selectedGamesByCourt(games, t);
+  const any = courts.some(c => c.liveGame || c.nextGame);
+  if(!any) return wrap;
 
-  if(liveG){
-    const b = div("banner banner-live");
-    const lbl = div("banner-lbl live-lbl");
-    lbl.appendChild(div("live-dot")); lbl.appendChild(document.createTextNode("EM QUADRA AGORA"));
-    b.appendChild(lbl);
-    const teams = div("banner-teams");
-    teams.appendChild(el("span",{"class":"banner-team live-team"},liveG.a));
-    if(hasScorePair(liveG.sA, liveG.sB)){
-      teams.appendChild(el("span",{"class":"banner-score"},safeScore(liveG.sA)));
-      teams.appendChild(el("span",{"class":"banner-vs","style":{"color":"var(--accent)"}},`×`));
-      teams.appendChild(el("span",{"class":"banner-score"},safeScore(liveG.sB)));
-    } else {
-      teams.appendChild(el("span",{"class":"banner-vs","style":{"color":"var(--accent)","padding":"0 14px","fontSize":"22px"}},`×`));
+  courts.forEach(c => {
+    if(c.liveGame){
+      const liveG = c.liveGame;
+      const b = div("banner banner-live");
+      const lbl = div("banner-lbl live-lbl");
+      lbl.appendChild(div("live-dot"));
+      lbl.appendChild(document.createTextNode(`EM QUADRA ${courtLabel(c)} AGORA`));
+      b.appendChild(lbl);
+      const teams = div("banner-teams");
+      teams.appendChild(el("span",{"class":"banner-team live-team"},safeText(liveG.a)));
+      if(hasScorePair(liveG.sA, liveG.sB)){
+        teams.appendChild(el("span",{"class":"banner-score"},safeScore(liveG.sA)));
+        teams.appendChild(el("span",{"class":"banner-vs","style":{"color":"var(--accent)"}},`×`));
+        teams.appendChild(el("span",{"class":"banner-score"},safeScore(liveG.sB)));
+      } else {
+        teams.appendChild(el("span",{"class":"banner-vs","style":{"color":"var(--accent)","padding":"0 14px","fontSize":"22px"}},`×`));
+      }
+      teams.appendChild(el("span",{"class":"banner-team live-team"},safeText(liveG.b)));
+      b.appendChild(teams);
+      b.appendChild(el("div",{"class":"banner-ctx live-ctx"},`${safeText(liveG.ctx)} · Quadra ${courtLabel(c)}`));
+      wrap.appendChild(b);
     }
-    teams.appendChild(el("span",{"class":"banner-team live-team"},liveG.b));
-    b.appendChild(teams);
-    b.appendChild(el("div",{"class":"banner-ctx live-ctx"},liveG.ctx));
-    wrap.appendChild(b);
-  }
 
-  if(nextG){
-    const b = div("banner banner-next");
-    const lbl = div("banner-lbl next-lbl");
-    lbl.appendChild(el("div",{"class":"next-dot","style":{width:"8px",height:"8px",borderRadius:"50%",background:"var(--blue)",flexShrink:"0"}}));
-    lbl.appendChild(document.createTextNode("PRÓXIMO JOGO"));
-    b.appendChild(lbl);
-    const teams = div("banner-teams");
-    teams.appendChild(el("span",{"class":"banner-team next-team"},nextG.a));
-    teams.appendChild(el("span",{"class":"banner-vs","style":{"color":"var(--blue)","padding":"0 14px","fontSize":"22px"}},`×`));
-    teams.appendChild(el("span",{"class":"banner-team next-team"},nextG.b));
-    b.appendChild(teams);
-    b.appendChild(el("div",{"class":"banner-ctx next-ctx"},nextG.ctx));
-    wrap.appendChild(b);
-  }
+    if(c.nextGame){
+      const nextG = c.nextGame;
+      const b = div("banner banner-next");
+      const lbl = div("banner-lbl next-lbl");
+      lbl.appendChild(el("div",{"class":"next-dot","style":{width:"8px",height:"8px",borderRadius:"50%",background:"var(--blue)",flexShrink:"0"}}));
+      lbl.appendChild(document.createTextNode(`PRÓXIMO JOGO — QUADRA ${courtLabel(c)}`));
+      b.appendChild(lbl);
+      const teams = div("banner-teams");
+      teams.appendChild(el("span",{"class":"banner-team next-team"},safeText(nextG.a)));
+      teams.appendChild(el("span",{"class":"banner-vs","style":{"color":"var(--blue)","padding":"0 14px","fontSize":"22px"}},`×`));
+      teams.appendChild(el("span",{"class":"banner-team next-team"},safeText(nextG.b)));
+      b.appendChild(teams);
+      b.appendChild(el("div",{"class":"banner-ctx next-ctx"},`${safeText(nextG.ctx)} · Quadra ${courtLabel(c)}`));
+      wrap.appendChild(b);
+    }
+  });
   return wrap;
 }
 
@@ -1428,7 +1555,8 @@ function renderGameList(games, readOnly, t, onScore, groupKey) {
 function renderGameRow(g, readOnly, t, key, onScore) {
   const done = hasScorePair(g.sA, g.sB);
   const aW = done&&+g.sA>+g.sB, bW = done&&+g.sB>+g.sA;
-  const isLive = key===normalizeGameKey(t?.liveId), isNext = key===normalizeGameKey(t?.nextId);
+  const assignment = firstCourtAssignment(t, key);
+  const isLive = assignment?.type === "live", isNext = assignment?.type === "next";
   const cls = `game-row ${isLive?"is-live":isNext?"is-next":done?"done":"pending"}`;
   const row = el("div",{"class":cls});
 
@@ -1458,8 +1586,8 @@ function renderGameRow(g, readOnly, t, key, onScore) {
 
   row.appendChild(el("span",{"class":"g-team"+(bW?" winner":"")},safeText(g.b)));
 
-  if(isLive) row.appendChild(el("span",{"class":"g-badge live-badge"},"QUADRA"));
-  else if(isNext) row.appendChild(el("span",{"class":"g-badge next-badge"},"PRÓX"));
+  if(isLive) row.appendChild(el("span",{"class":"g-badge live-badge"},`Q${assignment.courts.join(",")}`));
+  else if(isNext) row.appendChild(el("span",{"class":"g-badge next-badge"},`PRÓX Q${assignment.courts.join(",")}`));
   else if(!readOnly&&done) row.appendChild(el("span",{"class":"g-ok"},"✓"));
 
   return row;
@@ -1468,7 +1596,8 @@ function renderGameRow(g, readOnly, t, key, onScore) {
 function renderElimSlot(label, a, b, sA, sB, cls, readOnly, t, key, onScore) {
   const done=hasScorePair(sA,sB);
   const aW=done&&+sA>+sB, bW=done&&+sB>+sA;
-  const isLive=key===normalizeGameKey(t?.liveId), isNext=key===normalizeGameKey(t?.nextId);
+  const assignment = firstCourtAssignment(t, key);
+  const isLive=assignment?.type === "live", isNext=assignment?.type === "next";
   const slot = el("div",{"class":`elim-slot ${cls}${isLive?" is-live":isNext?" is-next":""}`});
   slot.appendChild(el("span",{"class":"elim-lbl"},label));
   slot.appendChild(el("span",{"class":"g-team"+(aW?" winner":"")},safeText(a)));
@@ -1526,6 +1655,7 @@ function renderPodium(first, second, third) {
 //  BOOT
 // ══════════════════════════════════════════════════════════
 render();
+
 </script>
 
 </body>
