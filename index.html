@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Torneio Pro - v8</title>
+<title>Torneio Pro - v17</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
 <style>
@@ -224,13 +224,49 @@ label.lbl { display: block; font-size: 10px; font-weight: 600; letter-spacing: 1
 .tag { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; display: inline-block; }
 .err { color: var(--red); font-size: 11px; margin-top: 6px; }
 @media(max-width:580px){ .two-col{grid-template-columns:1fr} .fmt-grid{grid-template-columns:1fr} .page-title{font-size:24px} .banner-team{font-size:13px} }
-</style>
+
+/* ── REFEREE MOBILE ── */
+.ref-wrap{max-width:720px;margin:0 auto;width:100%;}
+.ref-filter{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 14px;align-items:center;}
+.ref-filter-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);width:100%;}
+.ref-filter-btn{border:1px solid var(--border2);background:var(--s1);color:var(--text);border-radius:999px;padding:9px 13px;font-weight:800;font-size:13px;cursor:pointer;}
+.ref-filter-btn.on{background:var(--accent);border-color:var(--accent);color:#000;}
+.ref-card{background:#000;border:1px solid var(--border2);border-radius:18px;padding:18px 14px;margin-bottom:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);}
+.ref-court{font-family:var(--display);font-size:28px;letter-spacing:3px;color:var(--accent);text-align:center;line-height:1;}
+.ref-context{text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:6px 0 16px;}
+.ref-scoreboard{display:grid;grid-template-columns:1fr 54px 1fr;gap:8px;align-items:center;}
+.ref-team{text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.ref-team-name{font-size:22px;font-weight:800;color:#fff;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ref-points{font-family:var(--mono);font-size:76px;font-weight:800;line-height:.9;color:#00ff20;text-shadow:0 0 14px rgba(0,255,32,.25);}
+.ref-vs{font-size:54px;font-weight:900;color:#fff;text-align:center;}
+.ref-plus,.ref-minus{width:58px;height:58px;border-radius:50%;border:none;background:#fff;color:#000;font-size:34px;font-weight:900;line-height:1;cursor:pointer;}
+.ref-minus{font-size:38px;background:#202436;color:#fff;border:1px solid var(--border2);}
+.ref-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px;}
+.ref-next{margin-top:16px;padding:12px;border:1px solid rgba(61,142,255,.3);background:rgba(61,142,255,.08);border-radius:12px;text-align:center;}
+.ref-next-label{font-size:9px;font-weight:800;letter-spacing:2px;color:var(--blue);margin-bottom:5px;}
+.ref-next-game{font-size:16px;font-weight:800;color:#fff;}
+
+.ref-timeout-panel{margin-top:18px;padding:14px;border:1px solid rgba(255,190,0,.28);background:rgba(255,190,0,.07);border-radius:14px;text-align:center;}
+.ref-timeout-title{font-size:10px;font-weight:900;letter-spacing:2px;color:var(--gold);margin-bottom:10px;}
+.ref-timeout-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.ref-timeout-btn{border:1px solid rgba(255,190,0,.35);background:rgba(255,190,0,.12);color:var(--gold);border-radius:12px;padding:12px 8px;font-size:13px;font-weight:900;cursor:pointer;min-height:46px;}
+.ref-timeout-btn.used,.ref-timeout-btn:disabled{opacity:.45;cursor:not-allowed;background:var(--s1);color:var(--muted);border-color:var(--border2);}
+.ref-timeout-active{margin-bottom:10px;padding:12px;border-radius:12px;background:#141100;border:1px solid rgba(255,190,0,.35);}
+.ref-timeout-active.done{background:rgba(255,77,106,.12);border-color:rgba(255,77,106,.45);}
+.ref-timeout-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:900;color:var(--gold);}
+.ref-timeout-clock{font-family:var(--mono);font-size:48px;font-weight:900;color:var(--gold);line-height:1;margin-top:5px;}
+.ref-timeout-active.done .ref-timeout-clock,.ref-timeout-alert{color:var(--red);}
+.ref-timeout-alert{font-size:11px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;margin-top:5px;}
+@media(max-width:580px){.ref-filter{position:sticky;top:72px;z-index:80;background:var(--bg);padding:8px 0;margin-top:6px}.ref-filter-btn{flex:1;min-width:72px;padding:11px 8px}.topbar{padding:8px}.logo span{font-size:18px}.logo small{display:none}.tabs{gap:3px;padding:4px}.tab{font-size:13px;padding:10px 9px}.main{padding:10px}.ref-card{border-radius:14px;padding:14px 10px}.ref-scoreboard{grid-template-columns:1fr 34px 1fr}.ref-team-name{font-size:18px}.ref-points{font-size:64px}.ref-vs{font-size:40px}.ref-plus,.ref-minus{width:52px;height:52px}.ref-actions .btn{width:100%;justify-content:center;padding:12px 16px}}
+
+@media(max-width:580px){.ref-timeout-actions{grid-template-columns:1fr}.ref-timeout-clock{font-size:42px}.ref-timeout-btn{width:100%;}}</style>
 
 </head>
 <body>
 <div id="app"></div>
 
 <script>
+
 
 // ══════════════════════════════════════════════════════════
 //  STORAGE  (Firebase Realtime DB — free tier, no login)
@@ -353,7 +389,7 @@ function normalizeGameKey(key) {
 function selectedGame(games, key) {
   if (!key) return null;
   const k = normalizeGameKey(key);
-  return games.find(g => g.key === key) || games.find(g => g.key === k) || null;
+  return games.find(g => normalizeGameKey(g.key) === k) || games.find(g => g.key === key) || null;
 }
 
 
@@ -377,7 +413,8 @@ function getCourts(t) {
       label,
       n: Number.isFinite(Number(c?.n)) ? Number(c.n) : i + 1,
       liveId: c?.liveId ? normalizeGameKey(c.liveId) : null,
-      nextId: c?.nextId ? normalizeGameKey(c.nextId) : null
+      nextId: c?.nextId ? normalizeGameKey(c.nextId) : null,
+      finished: c?.finished || null
     };
   });
 }
@@ -386,7 +423,7 @@ function withCourtCount(t, count) {
   const n = Math.max(1, Math.min(12, Number(count) || 1));
   const current = getCourts(t);
   const courts = [];
-  for (let i = 0; i < n; i++) courts.push(current[i] || { id: String(i + 1), label: String(i + 1), n: i + 1, liveId: null, nextId: null });
+  for (let i = 0; i < n; i++) courts.push(current[i] || { id: String(i + 1), label: String(i + 1), n: i + 1, liveId: null, nextId: null, finished: null });
   return { ...t, courts: courts.map((c, i) => ({ ...c, n: i + 1 })), liveId: null, nextId: null };
 }
 
@@ -415,7 +452,8 @@ function withCourtLabels(t, labelsText) {
       label,
       n: i + 1,
       liveId: prev?.liveId || null,
-      nextId: prev?.nextId || null
+      nextId: prev?.nextId || null,
+      finished: prev?.finished || null
     };
   });
   return { ...t, courts, liveId: null, nextId: null };
@@ -429,6 +467,7 @@ function setCourtGame(t, courtId, slot, key) {
   if (!c) { c = { id, label: id, n: courts.length + 1, liveId: null, nextId: null }; courts.push(c); }
   const field = slot === "live" ? "liveId" : "nextId";
   c[field] = c[field] === k ? null : k;
+  if (field === "liveId" && c[field]) c.finished = null;
   return { ...t, courts: courts.map((c, i) => ({ ...c, n: i + 1 })), liveId: null, nextId: null };
 }
 
@@ -457,8 +496,166 @@ function selectedGamesByCourt(games, t) {
   return getCourts(t).map(c => ({
     ...c,
     liveGame: selectedGame(games, c.liveId),
-    nextGame: selectedGame(games, c.nextId)
+    nextGame: selectedGame(games, c.nextId),
+    finishedGame: c.finished || null
   }));
+}
+
+function applyPatchToGame(g, patch) {
+  return { ...g, ...patch };
+}
+
+function updateGameByKey(t, key, patch) {
+  const k = normalizeGameKey(key);
+  if (!t || !k) return t;
+  if (t.fmt === "sg") {
+    return { ...t, games: (t.games||[]).map(g => normalizeGameKey(`sg-${g.id}`) === k || normalizeGameKey(`Grupo-${g.id}`) === k ? applyPatchToGame(g, patch) : g) };
+  }
+  if (t.fmt === "mg") {
+    const groups = {};
+    Object.entries(t.groups||{}).forEach(([gk, grp]) => {
+      groups[gk] = { ...grp, games: (grp.games||[]).map(g => normalizeGameKey(`g-${gk}-${g.id}`) === k ? applyPatchToGame(g, patch) : g) };
+    });
+    let nt = { ...t, groups };
+    if (Array.isArray(t.brk)) nt = { ...nt, brk: updateBracketByKey(t.brk, k, patch, "br") };
+    return nt;
+  }
+  if (t.fmt === "se") {
+    let nt = { ...t, brk: updateBracketByKey(t.brk||[], k, patch, "se") };
+    if (k === "tp") nt = { ...nt, tp: applyPatchToGame(nt.tp||{}, patch) };
+    return nt;
+  }
+  if (t.fmt === "sw") {
+    return { ...t, curG: (t.curG||[]).map(g => normalizeGameKey(`Rodada ${t.round}-${g.id}`) === k || normalizeGameKey(`sg-${g.id}`) === k ? applyPatchToGame(g, patch) : g) };
+  }
+  if (k === "final-3") return { ...t, finals:{ ...(t.finals||{}), thirdGame: applyPatchToGame(t.finals?.thirdGame||{}, patch) } };
+  if (k === "final-f") return { ...t, finals:{ ...(t.finals||{}), finalGame: applyPatchToGame(t.finals?.finalGame||{}, patch) } };
+  return t;
+}
+
+function updateBracketByKey(brk, k, patch, prefix) {
+  return (brk||[]).map(r => ({ ...r, games:(r.games||[]).map((g,i) => normalizeGameKey(`${prefix}-${r.rn}-${i}`) === k ? applyPatchToGame(g, patch) : g) }));
+}
+
+function updateRefScore(t, key, sA, sB) {
+  return updateGameByKey(t, key, { sA: toScoreOrNull(sA), sB: toScoreOrNull(sB), status: "live" });
+}
+
+function getTimeoutState(g) {
+  return g?.timeouts || { aUsed:false, bUsed:false, active:null };
+}
+
+function timeoutRemainingSeconds(g) {
+  const ts = getTimeoutState(g);
+  if (!ts.active || !ts.active.startedAt) return null;
+  const duration = Number(ts.active.duration || 60);
+  const elapsed = Math.floor((Date.now() - Number(ts.active.startedAt)) / 1000);
+  return Math.max(0, duration - elapsed);
+}
+
+function timeoutIsActive(g) {
+  const rem = timeoutRemainingSeconds(g);
+  return rem !== null && rem > 0;
+}
+
+function timeoutIsExpired(g) {
+  const rem = timeoutRemainingSeconds(g);
+  return rem !== null && rem <= 0;
+}
+
+function formatTimer(sec) {
+  const s = Math.max(0, Number(sec) || 0);
+  const m = Math.floor(s / 60);
+  const r = String(s % 60).padStart(2, "0");
+  return `${m}:${r}`;
+}
+
+function startTechnicalTimeout(t, key, side) {
+  const games = getAllGames(t);
+  const g = selectedGame(games, key);
+  const current = getTimeoutState(g);
+  const usedField = side === "a" ? "aUsed" : "bUsed";
+  if (current[usedField]) return t;
+  if (timeoutIsActive(g)) return t;
+  const next = {
+    ...current,
+    [usedField]: true,
+    active: { side, startedAt: Date.now(), duration: 60 }
+  };
+  return updateGameByKey(t, key, { timeouts: next });
+}
+
+function renderTechnicalTimeoutPanel(t, key, g) {
+  const ts = getTimeoutState(g);
+  const active = ts.active || null;
+  const remaining = timeoutRemainingSeconds(g);
+  const panel = div("ref-timeout-panel");
+  panel.appendChild(el("div", {"class":"ref-timeout-title"}, "TEMPO TÉCNICO"));
+
+  if (active) {
+    const sideName = active.side === "a" ? safeText(g.a) : safeText(g.b);
+    const expired = remaining !== null && remaining <= 0;
+    const box = div("ref-timeout-active" + (expired ? " done" : ""));
+    box.appendChild(el("div", {"class":"ref-timeout-label"}, expired ? "TEMPO ENCERRADO" : `Tempo de ${sideName}`));
+    box.appendChild(el("div", {"class":"ref-timeout-clock"}, formatTimer(remaining)));
+    if (expired) box.appendChild(el("div", {"class":"ref-timeout-alert"}, "Sinalizar retorno ao jogo"));
+    panel.appendChild(box);
+  }
+
+  const row = div("ref-timeout-actions");
+  [
+    {side:"a", name:safeText(g.a), used:!!ts.aUsed},
+    {side:"b", name:safeText(g.b), used:!!ts.bUsed}
+  ].forEach(item => {
+    const disabled = item.used || timeoutIsActive(g);
+    const b = el("button", {
+      "class":"ref-timeout-btn" + (item.used ? " used" : ""),
+      disabled: disabled ? "disabled" : null,
+      onClick:(ev)=>{
+        ev?.stopPropagation?.();
+        if (disabled) return;
+        persistTournament(startTechnicalTimeout(t, key, item.side));
+      }
+    }, item.used ? `${item.name}: usado` : `⏱ ${item.name}`);
+    row.appendChild(b);
+  });
+  panel.appendChild(row);
+  return panel;
+}
+
+function finishCourtGame(t, courtId, key, sA, sB) {
+  let nt = updateGameByKey(t, key, { sA: toScoreOrNull(sA), sB: toScoreOrNull(sB), status: "finished", finishedAt: Date.now() });
+  const gamesAfterFinish = getAllGames(nt);
+  const finishedGame = selectedGame(gamesAfterFinish, key) || {};
+  let promotedNextKey = null;
+
+  const courts = getCourts(nt).map((c, i) => {
+    if (String(c.id) !== String(courtId)) return { ...c, n: i + 1 };
+    promotedNextKey = c.nextId ? normalizeGameKey(c.nextId) : null;
+    return {
+      ...c,
+      n: i + 1,
+      liveId: promotedNextKey,
+      nextId: null,
+      finished: {
+        key: normalizeGameKey(key),
+        a: finishedGame.a,
+        b: finishedGame.b,
+        sA: toScoreOrNull(sA),
+        sB: toScoreOrNull(sB),
+        ctx: finishedGame.ctx,
+        endedAt: Date.now()
+      }
+    };
+  });
+
+  // Ao encerrar uma partida, o próximo jogo daquela quadra sobe automaticamente
+  // para "Em Quadra", já disponível para atribuição de placar pela Arbitragem.
+  if (promotedNextKey) {
+    nt = updateGameByKey(nt, promotedNextKey, { status: "live" });
+  }
+
+  return { ...nt, courts, liveId:null, nextId:null };
 }
 
 function getAllGames(t) {
@@ -539,9 +736,13 @@ function buildTournament(p) {
 //  STATE
 // ══════════════════════════════════════════════════════════
 const ADMIN_PIN = "0210"; // Change this before deploying!
+const REF_PIN = "1234"; // PIN da arbitragem
 let STATE = {
-  view: "public",    // "public" | "admin"
+  view: "public",    // "public" | "admin" | "ref"
   adminUnlocked: false,
+  refUnlocked: false,
+  refPinInput: "",
+  refPinError: false,
   adminTab: "create",
   pinInput: "",
   pinError: false,
@@ -550,6 +751,7 @@ let STATE = {
   adminTab: "manage",  // "manage" | "court" | "awards" | "create"
   voteId: {},          // { awardId: teamVotedFor } per session
   createDraft: { text: "", title: "", teams: "", fmt: "sg" },
+  refCourtFilter: "", // id da quadra selecionada pelo árbitro; vazio = nenhuma quadra selecionada
 };
 
 function setState(patch) {
@@ -571,7 +773,7 @@ let pollInterval = null;
 function shouldDeferPollingRender() {
   // Enquanto o Admin está aberto, o polling não deve redesenhar nem sobrescrever o estado.
   // Em especial na aba Criar, qualquer render automático recria os inputs e apaga o texto digitado.
-  return STATE.view === "admin" && STATE.adminUnlocked;
+  return (STATE.view === "admin" && STATE.adminUnlocked) || (STATE.view === "ref" && STATE.refUnlocked);
 }
 
 async function startPolling() {
@@ -611,9 +813,11 @@ function winner(sA, sB, a, b) {
 function el(tag, attrs, ...children) {
   const e = document.createElement(tag);
   Object.entries(attrs||{}).forEach(([k,v])=>{
+    if (v === null || v === undefined || v === false) return;
     if (k==="class") e.className=v;
     else if (k==="style") Object.assign(e.style, v);
-    else if (k.startsWith("on")) e.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k.startsWith("on") && typeof v === "function") e.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (v === true) e.setAttribute(k, k);
     else e.setAttribute(k,v);
   });
   children.forEach(c=>{
@@ -708,7 +912,11 @@ function render() {
 
   try {
     if (STATE.view === "admin" && !STATE.adminUnlocked) {
-      app.appendChild(renderPinScreen());
+      app.appendChild(renderPinScreen("admin"));
+      return;
+    }
+    if (STATE.view === "ref" && !STATE.refUnlocked) {
+      app.appendChild(renderPinScreen("ref"));
       return;
     }
 
@@ -717,8 +925,10 @@ function render() {
 
     if (STATE.view === "public") {
       main.appendChild(renderPublic());
-    } else {
+    } else if (STATE.view === "admin") {
       main.appendChild(renderAdmin());
+    } else {
+      main.appendChild(renderReferee());
     }
 
     app.appendChild(main);
@@ -751,10 +961,14 @@ function renderTopbar() {
   }
 
   const tabs = div("tabs");
-  ["📊 Público","⚙️ Admin"].forEach((lbl,i)=>{
-    const v = i===0?"public":"admin";
+  [
+    {lbl:"📊 Público", v:"public"},
+    {lbl:"🧑‍⚖️ Arbitragem", v:"ref"},
+    {lbl:"⚙️ Admin", v:"admin"}
+  ].forEach(({lbl,v})=>{
     const t = el("button",{"class":"tab "+(STATE.view===v?"on":""),onClick:()=>{
       if(v==="admin"&&!STATE.adminUnlocked){ setState({view:"admin"}); return; }
+      if(v==="ref"&&!STATE.refUnlocked){ setState({view:"ref"}); return; }
       setState({view:v});
     }},lbl);
     tabs.appendChild(t);
@@ -769,15 +983,15 @@ function renderTopbar() {
 // ══════════════════════════════════════════════════════════
 //  PIN SCREEN
 // ══════════════════════════════════════════════════════════
-function renderPinScreen() {
+function renderPinScreen(mode="admin") {
   const wrap = div("pin-wrap");
   const box = div("pin-box");
-  box.appendChild(el("div",{"class":"pin-title"},"ADMIN"));
+  box.appendChild(el("div",{"class":"pin-title"},mode==="ref"?"ARBITRAGEM":"ADMIN"));
   box.appendChild(el("div",{"class":"pin-sub"},"Digite o PIN de 4 dígitos"));
 
   const dots = div("pin-dots");
   for(let i=0;i<4;i++){
-    const d = div("pin-dot" + (i<STATE.pinInput.length?" filled":"") + (STATE.pinError?" error":""));
+    const d = div("pin-dot" + (i<(mode==="ref"?STATE.refPinInput:STATE.pinInput).length?" filled":"") + ((mode==="ref"?STATE.refPinError:STATE.pinError)?" error":""));
     dots.appendChild(d);
   }
   box.appendChild(dots);
@@ -786,30 +1000,36 @@ function renderPinScreen() {
   const keys = ["1","2","3","4","5","6","7","8","9","","0","⌫"];
   keys.forEach(k=>{
     if(k===""){grid.appendChild(div("pin-key"));return;}
-    const btn = el("div",{"class":"pin-key"+(k==="⌫"?" del":""),onClick:()=>handlePin(k)},k);
+    const btn = el("div",{"class":"pin-key"+(k==="⌫"?" del":""),onClick:()=>handlePin(k, mode)},k);
     grid.appendChild(btn);
   });
   box.appendChild(grid);
 
   const errEl = div("pin-err");
-  if(STATE.pinError) errEl.textContent="PIN incorreto. Tente novamente.";
+  if(mode==="ref" ? STATE.refPinError : STATE.pinError) errEl.textContent="PIN incorreto. Tente novamente.";
   box.appendChild(errEl);
   wrap.appendChild(box);
   return wrap;
 }
 
-function handlePin(k) {
+function handlePin(k, mode="admin") {
+  const isRef = mode === "ref";
+  const inputKey = isRef ? "refPinInput" : "pinInput";
+  const errorKey = isRef ? "refPinError" : "pinError";
+  const expected = isRef ? REF_PIN : ADMIN_PIN;
+
   if(k==="⌫"){
-    setState({pinInput:STATE.pinInput.slice(0,-1),pinError:false});
+    setState({[inputKey]:STATE[inputKey].slice(0,-1),[errorKey]:false});
     return;
   }
-  const next = STATE.pinInput + k;
-  if(next.length<4){ setState({pinInput:next,pinError:false}); return; }
-  if(next===ADMIN_PIN){
-    setState({adminUnlocked:true,pinInput:"",pinError:false,view:"admin",adminTab:STATE.tournament?"manage":"create"});
+  const next = STATE[inputKey] + k;
+  if(next.length<4){ setState({[inputKey]:next,[errorKey]:false}); return; }
+  if(next===expected){
+    if(isRef) setState({refUnlocked:true,refPinInput:"",refPinError:false,view:"ref"});
+    else setState({adminUnlocked:true,pinInput:"",pinError:false,view:"admin",adminTab:STATE.tournament?"manage":"create"});
   } else {
-    setState({pinInput:"",pinError:true});
-    setTimeout(()=>setState({pinError:false}),800);
+    setState({[inputKey]:"",[errorKey]:true});
+    setTimeout(()=>setState({[errorKey]:false}),800);
   }
 }
 
@@ -851,6 +1071,126 @@ function renderPublic() {
   if(t.awards?.length>0){ wrap.appendChild(renderAwardsPublic(t)); }
 
   return wrap;
+}
+
+
+// ══════════════════════════════════════════════════════════
+//  REFEREE VIEW
+// ══════════════════════════════════════════════════════════
+function renderReferee() {
+  const wrap = div("ref-wrap");
+  wrap.appendChild(el("div",{"class":"page-title"},"Arbitragem"));
+  wrap.appendChild(el("div",{"class":"page-sub"},"placar por quadra"));
+  const t = STATE.tournament;
+  if(!t){
+    const e = div("empty");
+    e.innerHTML=`<div class="ei">🎾</div><h2>NENHUM TORNEIO ATIVO</h2><p>Aguarde o administrador criar e atribuir jogos às quadras.</p>`;
+    wrap.appendChild(e);
+    return wrap;
+  }
+  const games = getAllGames(t);
+  const courts = selectedGamesByCourt(games, t).filter(c => c.liveGame || c.finishedGame || c.nextGame);
+  if(!courts.length){
+    STATE.refCourtFilter = "";
+    const e = div("empty");
+    e.innerHTML=`<div class="ei">⏸️</div><h2>NENHUMA QUADRA EM JOGO</h2><p>Quando o Admin marcar um jogo como Em Quadra, ele aparecerá aqui.</p>`;
+    wrap.appendChild(e);
+    return wrap;
+  }
+
+  if(STATE.refCourtFilter && !courts.some(c => String(c.id) === String(STATE.refCourtFilter))){
+    STATE.refCourtFilter = "";
+  }
+
+  wrap.appendChild(renderRefCourtFilter(courts));
+  if(!STATE.refCourtFilter){
+    const e = div("empty");
+    e.innerHTML=`<div class="ei">🎯</div><h2>SELECIONE UMA QUADRA</h2><p>Escolha a quadra em que você vai atuar. O placar só aparece depois da seleção.</p>`;
+    wrap.appendChild(e);
+    return wrap;
+  }
+  const visibleCourts = courts.filter(c => String(c.id) === String(STATE.refCourtFilter));
+  visibleCourts.forEach(c => wrap.appendChild(renderRefCourt(c, t)));
+  return wrap;
+}
+
+function renderRefCourtFilter(courts) {
+  const bar = div("ref-filter");
+  bar.appendChild(el("div", {"class":"ref-filter-label"}, "Selecione sua quadra"));
+  courts.forEach(c => {
+    const id = String(c.id);
+    const label = `Q${courtLabel(c)}`;
+    const b = el("button", {"class":"ref-filter-btn" + (String(STATE.refCourtFilter) === id ? " on" : ""), onClick:()=>setState({refCourtFilter:id})}, label);
+    bar.appendChild(b);
+  });
+  return bar;
+}
+
+function renderRefCourt(c, t) {
+  const g = c.liveGame;
+  const card = div("ref-card");
+  card.appendChild(el("div", {"class":"ref-court"}, `QUADRA ${courtLabel(c)}`));
+
+  if (!g) {
+    if (c.finishedGame) {
+      const fg = c.finishedGame;
+      card.appendChild(el("div", {"class":"ref-context"}, "JOGO ENCERRADO"));
+      const done = div("ref-next");
+      done.appendChild(el("div", {"class":"ref-next-label"}, "ÚLTIMO JOGO ENCERRADO"));
+      done.appendChild(el("div", {"class":"ref-next-game"}, `${safeText(fg.a)} ${safeScore(fg.sA)} × ${safeScore(fg.sB)} ${safeText(fg.b)}`));
+      card.appendChild(done);
+    } else {
+      card.appendChild(el("div", {"class":"ref-context"}, "SEM JOGO EM QUADRA"));
+    }
+    if(c.nextGame){
+      const nx = div("ref-next");
+      nx.appendChild(el("div", {"class":"ref-next-label"}, "PRÓXIMO JOGO PREVISTO"));
+      nx.appendChild(el("div", {"class":"ref-next-game"}, `${safeText(c.nextGame.a)} × ${safeText(c.nextGame.b)}`));
+      card.appendChild(nx);
+    }
+    return card;
+  }
+
+  const key = normalizeGameKey(c.liveId || g.key);
+  card.appendChild(el("div", {"class":"ref-context"}, safeText(g.ctx)));
+
+  const score = div("ref-scoreboard");
+  const left = div("ref-team");
+  const right = div("ref-team");
+  const sA = isValidNumber(g.sA) ? Number(g.sA) : 0;
+  const sB = isValidNumber(g.sB) ? Number(g.sB) : 0;
+  left.appendChild(el("div", {"class":"ref-team-name"}, safeText(g.a)));
+  left.appendChild(el("button", {"class":"ref-plus", onClick:(ev)=>{ ev?.stopPropagation?.(); persistTournament(updateRefScore(t, key, sA + 1, sB)); }}, "+"));
+  left.appendChild(el("div", {"class":"ref-points"}, safeScore(sA)));
+  left.appendChild(el("button", {"class":"ref-minus", onClick:(ev)=>{ ev?.stopPropagation?.(); persistTournament(updateRefScore(t, key, Math.max(0, sA - 1), sB)); }}, "−"));
+
+  right.appendChild(el("div", {"class":"ref-team-name"}, safeText(g.b)));
+  right.appendChild(el("button", {"class":"ref-plus", onClick:(ev)=>{ ev?.stopPropagation?.(); persistTournament(updateRefScore(t, key, sA, sB + 1)); }}, "+"));
+  right.appendChild(el("div", {"class":"ref-points"}, safeScore(sB)));
+  right.appendChild(el("button", {"class":"ref-minus", onClick:(ev)=>{ ev?.stopPropagation?.(); persistTournament(updateRefScore(t, key, sA, Math.max(0, sB - 1))); }}, "−"));
+
+  const vs = el("div", {"class":"ref-vs"}, "×");
+  score.appendChild(left); score.appendChild(vs); score.appendChild(right);
+  card.appendChild(score);
+  card.appendChild(renderTechnicalTimeoutPanel(t, key, g));
+  if (timeoutIsActive(g)) setTimeout(() => { if (STATE.view === "ref" && STATE.refUnlocked) render(); }, 1000);
+
+  const actions = div("ref-actions");
+  actions.appendChild(btn("btn-primary", "💾 Salvar placar", (ev)=>{ ev?.stopPropagation?.(); persistTournament(updateRefScore(t, key, sA, sB)); }));
+  actions.appendChild(btn("btn-danger", "🏁 Encerrar jogo", (ev)=>{
+    ev?.stopPropagation?.();
+    const nt = finishCourtGame(t, c.id, key, sA, sB);
+    persistTournament(nt);
+  }));
+  card.appendChild(actions);
+
+  if(c.nextGame){
+    const nx = div("ref-next");
+    nx.appendChild(el("div", {"class":"ref-next-label"}, "PRÓXIMO JOGO PREVISTO"));
+    nx.appendChild(el("div", {"class":"ref-next-game"}, `${safeText(c.nextGame.a)} × ${safeText(c.nextGame.b)}`));
+    card.appendChild(nx);
+  }
+  return card;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1295,7 +1635,7 @@ function renderCourtBanners(t) {
   const wrap = div("");
   const games = getAllGames(t);
   const courts = selectedGamesByCourt(games, t);
-  const any = courts.some(c => c.liveGame || c.nextGame);
+  const any = courts.some(c => c.liveGame || c.nextGame || c.finishedGame);
   if(!any) return wrap;
 
   courts.forEach(c => {
@@ -1318,6 +1658,23 @@ function renderCourtBanners(t) {
       teams.appendChild(el("span",{"class":"banner-team live-team"},safeText(liveG.b)));
       b.appendChild(teams);
       b.appendChild(el("div",{"class":"banner-ctx live-ctx"},`${safeText(liveG.ctx)} · Quadra ${courtLabel(c)}`));
+      wrap.appendChild(b);
+    }
+
+    if(!c.liveGame && c.finishedGame){
+      const fg = c.finishedGame;
+      const b = div("banner banner-live");
+      const lbl = div("banner-lbl live-lbl");
+      lbl.appendChild(document.createTextNode(`ENCERRADO — QUADRA ${courtLabel(c)}`));
+      b.appendChild(lbl);
+      const teams = div("banner-teams");
+      teams.appendChild(el("span",{"class":"banner-team live-team"},safeText(fg.a)));
+      teams.appendChild(el("span",{"class":"banner-score"},safeScore(fg.sA)));
+      teams.appendChild(el("span",{"class":"banner-vs","style":{"color":"var(--accent)"}},`×`));
+      teams.appendChild(el("span",{"class":"banner-score"},safeScore(fg.sB)));
+      teams.appendChild(el("span",{"class":"banner-team live-team"},safeText(fg.b)));
+      b.appendChild(teams);
+      b.appendChild(el("div",{"class":"banner-ctx live-ctx"},`${safeText(fg.ctx)} · Jogo encerrado`));
       wrap.appendChild(b);
     }
 
@@ -1655,6 +2012,7 @@ function renderPodium(first, second, third) {
 //  BOOT
 // ══════════════════════════════════════════════════════════
 render();
+
 
 </script>
 
