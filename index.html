@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Torneio Pro - v3</title>
+<title>Torneio Pro - v8</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
 <style>
@@ -280,7 +280,7 @@ function calcStats(teams, games) {
   const s = {};
   teams.forEach(t => { s[t] = { w:0, d:0, l:0, pts:0, gf:0, ga:0, played:0 }; });
   (games||[]).forEach(g => {
-    if (g.sA===null||g.sB===null) return;
+    if (!hasScorePair(g.sA, g.sB)) return;
     const a=+g.sA, b=+g.sB;
     if (!s[g.a]||!s[g.b]) return;
     s[g.a].played++; s[g.b].played++;
@@ -499,7 +499,7 @@ startPolling();
 //  HELPERS
 // ══════════════════════════════════════════════════════════
 function winner(sA, sB, a, b) {
-  if (sA===null||sB===null) return null;
+  if (!hasScorePair(sA, sB)) return null;
   return +sA>+sB?a:+sB>+sA?b:null;
 }
 function el(tag, attrs, ...children) {
@@ -525,17 +525,45 @@ function div(cls, attrsOrChild, ...children){
   }
   return el("div", attrs, ...children);
 }
-function span(cls,txt){ return el("span",{"class":cls},txt); }
+function span(cls,txt){ return el("span",{"class":cls},safeText(txt)); }
 function btn(cls,txt,onclick){ return el("button",{"class":"btn "+cls,onClick:onclick},txt); }
+
+function isMissing(v) {
+  return v === null || v === undefined || (typeof v === "number" && Number.isNaN(v));
+}
+function isValidNumber(v) {
+  if (v === null || v === undefined || v === "") return false;
+  const n = Number(v);
+  return Number.isFinite(n);
+}
+function hasScorePair(a, b) {
+  return isValidNumber(a) && isValidNumber(b);
+}
+function safeText(v) {
+  if (isMissing(v)) return "-";
+  if (typeof v === "number" && !Number.isFinite(v)) return "-";
+  const txt = String(v);
+  if (txt === "undefined" || txt === "null" || txt === "NaN") return "-";
+  return txt;
+}
+function safeScore(v) {
+  return isValidNumber(v) ? String(Number(v)) : "-";
+}
+function safeInputValue(v) {
+  return isValidNumber(v) ? String(Number(v)) : "";
+}
+function toScoreOrNull(v) {
+  return isValidNumber(v) ? Number(v) : null;
+}
 
 function scorePatch(field, val) {
   if (field === "__score" && val && typeof val === "object") {
     return {
-      sA: val.sA === "" ? null : +val.sA,
-      sB: val.sB === "" ? null : +val.sB
+      sA: toScoreOrNull(val.sA),
+      sB: toScoreOrNull(val.sB)
     };
   }
-  return { [field]: val === "" ? null : +val };
+  return { [field]: toScoreOrNull(val) };
 }
 
 function uniqueTeams(t) {
@@ -853,7 +881,7 @@ function renderCourtPanel(t) {
   [{g:liveG,color:"var(--accent)",dotClass:"live-dot",label:"🟢 Em Quadra",emptyLbl:"Nenhum jogo selecionado"},{g:nextG,color:"var(--blue)",dotClass:"",label:"🔵 Próximo Jogo",emptyLbl:"Nenhum jogo selecionado"}].forEach(({g,color,label,emptyLbl})=>{
     const box = el("div",{"style":{padding:"10px 12px",background:g?`rgba(${color==="var(--accent)"?"0,229,160":"61,142,255"},.1)`:"var(--s1)",border:`1px solid ${g?color+"66":"var(--border)"}`,borderRadius:"7px"}});
     box.appendChild(el("div",{"style":{fontSize:"9px",fontWeight:"700",letterSpacing:"2px",textTransform:"uppercase",color:g?color:"var(--muted)",marginBottom:"5px"}},label));
-    box.appendChild(el("div",{"style":{fontSize:"13px",fontWeight:"600",color:g?"var(--text)":"var(--muted)"}},g?`${g.a} × ${g.b}`:emptyLbl));
+    box.appendChild(el("div",{"style":{fontSize:"13px",fontWeight:"600",color:g?"var(--text)":"var(--muted)"}},g?`${safeText(g.a)} × ${safeText(g.b)}`:emptyLbl));
     if(g) box.appendChild(el("div",{"style":{fontSize:"10px",color:color,marginTop:"3px"}},g.ctx));
     row.appendChild(box);
   });
@@ -882,9 +910,9 @@ function renderCourtPanel(t) {
       const isDone=g.sA!==null&&g.sB!==null;
       const row = el("div",{"style":{display:"flex",alignItems:"center",gap:"8px",padding:"7px 8px",borderRadius:"6px",marginBottom:"4px",background:isLive?"rgba(0,229,160,.08)":isNext?"rgba(61,142,255,.06)":"transparent",border:`1px solid ${isLive?"rgba(0,229,160,.4)":isNext?"rgba(61,142,255,.3)":"var(--border)"}`,opacity:"1",transition:"all .15s"}});
       row.appendChild(el("span",{"style":{fontFamily:"var(--mono)",fontSize:"9px",color:"var(--muted)",minWidth:"20px"}},`#${g.id}`));
-      row.appendChild(el("span",{"style":{flex:"1",fontSize:"12px",fontWeight:"500"}},g.a));
+      row.appendChild(el("span",{"style":{flex:"1",fontSize:"12px",fontWeight:"500"}},safeText(g.a)));
       row.appendChild(el("span",{"style":{fontSize:"10px",color:"var(--muted)"}},"×"));
-      row.appendChild(el("span",{"style":{flex:"1",fontSize:"12px",fontWeight:"500",textAlign:"right"}},g.b));
+      row.appendChild(el("span",{"style":{flex:"1",fontSize:"12px",fontWeight:"500",textAlign:"right"}},safeText(g.b)));
       if(isDone) row.appendChild(el("span",{"style":{fontFamily:"var(--mono)",fontSize:"10px",color:"var(--muted)"}},`${g.sA}–${g.sB}`));
       const acts = div("court-pick");
       const bl = el("button",{"class":"cp-btn cp-live"+(isLive?" on":""),onClick:(ev)=>{ev.stopPropagation();persistTournament({...t,liveId:isLive?null:g.key});}},isLive?"✓ Quadra":"🟢 Quadra");
@@ -911,18 +939,41 @@ function renderAwardsAdmin(t) {
   card.appendChild(renderCardHead("Gerenciar Prêmios"));
 
   // Add new award
-  const addRow = el("div",{"style":{display:"flex",gap:"8px",marginBottom:"12px",flexWrap:"wrap"}});
-  const nameInp = el("input",{"class":"inp","placeholder":"Ex: MVP, Melhor Ataque, Fair Play...","style":{flex:"1",minWidth:"160px"}});
+  const addBox = el("div",{"style":{padding:"10px",border:"1px solid var(--border)",borderRadius:"7px",background:"var(--bg)",marginBottom:"12px"}});
+  const addRow = el("div",{"style":{display:"flex",gap:"8px",marginBottom:"8px",flexWrap:"wrap"}});
+  const nameInp = el("input",{"class":"inp","placeholder":"Ex: Melhor Jogador, MVP, Fair Play...","style":{flex:"1",minWidth:"180px"}});
+  const modeSel = el("select",{"class":"inp","style":{width:"220px",maxWidth:"100%"}});
+  modeSel.appendChild(el("option",{"value":"teams"},"Candidatos = equipes"));
+  modeSel.appendChild(el("option",{"value":"manual"},"Candidatos manuais"));
   addRow.appendChild(nameInp);
+  addRow.appendChild(modeSel);
+  addBox.appendChild(addRow);
 
-  addRow.appendChild(btn("btn-primary btn-sm","+ Criar Prêmio",()=>{
+  const manualCreateWrap = el("div",{"style":{display:"none",marginBottom:"8px"}});
+  manualCreateWrap.appendChild(el("label",{"class":"lbl"},"Nomes dos candidatos manuais"));
+  const manualCreateInp = el("textarea",{"class":"textarea","style":{minHeight:"70px"},"placeholder":"Um nome por linha ou separados por vírgula\nEx:\nJoão Silva\nMaria Santos\nPedro Lima"});
+  manualCreateWrap.appendChild(manualCreateInp);
+  addBox.appendChild(manualCreateWrap);
+  modeSel.addEventListener("change",()=>{
+    manualCreateWrap.style.display = modeSel.value === "manual" ? "block" : "none";
+  });
+
+  const addErr = div("err");
+  addBox.appendChild(addErr);
+  addBox.appendChild(btn("btn-primary btn-sm","+ Criar Prêmio",()=>{
     const name = nameInp.value.trim();
-    if(!name) return;
-    const newAward = { id: Date.now().toString(), name, candidates: [...allTeams], enabled: true };
+    if(!name){ addErr.textContent="Informe o nome do prêmio."; return; }
+    const mode = modeSel.value;
+    const manualCandidates = parseCandidatesText(manualCreateInp.value);
+    const initialCandidates = mode === "manual" ? manualCandidates : [...allTeams];
+    if(mode === "manual" && initialCandidates.length === 0){ addErr.textContent="Digite pelo menos um candidato manual."; return; }
+    const newAward = { id: Date.now().toString(), name, candidateMode: mode, candidates: initialCandidates, enabled: true };
     persistTournament({...t, awards:[...awards, newAward], votes:{...(t.votes||{}),[newAward.id]:{}}});
     nameInp.value="";
+    manualCreateInp.value="";
+    addErr.textContent="";
   }));
-  card.appendChild(addRow);
+  card.appendChild(addBox);
 
   if(awards.length===0){
     card.appendChild(el("p",{"style":{fontSize:"12px",color:"var(--muted)",padding:"10px 0"}},"Nenhum prêmio criado ainda."));
@@ -930,6 +981,7 @@ function renderAwardsAdmin(t) {
 
   awards.forEach(award=>{
     const candidates = award.candidates || [];
+    const mode = award.candidateMode || "teams"; // compatibilidade com prêmios antigos
     const ac = div("award-card");
     const hdr = el("div",{"style":{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"8px",marginBottom:"8px",flexWrap:"wrap"}});
     hdr.appendChild(el("div",{"class":"award-title"},`🏅 ${award.name}`));
@@ -948,29 +1000,62 @@ function renderAwardsAdmin(t) {
     ac.appendChild(hdr);
 
     const editBox = el("div",{"style":{padding:"10px",border:"1px solid var(--border)",borderRadius:"7px",background:"var(--bg)",marginBottom:"10px"}});
-    editBox.appendChild(el("div",{"style":{fontSize:"10px",fontWeight:"700",letterSpacing:"1.5px",textTransform:"uppercase",color:"var(--muted)",marginBottom:"8px"}},"Selecionar candidatos deste prêmio"));
+    editBox.appendChild(el("div",{"style":{fontSize:"10px",fontWeight:"700",letterSpacing:"1.5px",textTransform:"uppercase",color:"var(--muted)",marginBottom:"8px"}},"Candidatos deste prêmio"));
 
-    if(!allTeams.length){
-      editBox.appendChild(el("p",{"style":{fontSize:"11px",color:"var(--muted)"}},"Nenhuma equipe disponível no torneio."));
-    } else {
-      const grid = el("div",{"style":{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:"6px"}});
-      allTeams.forEach(team=>{
-        const checked = candidates.includes(team);
-        const opt = el("label",{"style":{display:"flex",alignItems:"center",gap:"8px",padding:"7px 9px",border:"1px solid var(--border)",borderRadius:"6px",background:checked?"var(--accentfade)":"var(--s1)",cursor:"pointer",fontSize:"12px"}});
-        const cb = el("input",{"type":"checkbox"});
-        cb.checked = checked;
-        cb.addEventListener("change",()=>{
-          const current = new Set(candidates);
-          if(cb.checked) current.add(team); else current.delete(team);
-          const updatedAward = {...award, candidates:[...current]};
+    const modeRow = el("div",{"style":{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",marginBottom:"10px"}});
+    modeRow.appendChild(el("span",{"style":{fontSize:"11px",color:"var(--muted)"}},"Origem dos candidatos:"));
+    const modeEditSel = el("select",{"class":"inp","style":{width:"230px",maxWidth:"100%"}});
+    modeEditSel.appendChild(el("option",{"value":"teams"},"Selecionar equipes"));
+    modeEditSel.appendChild(el("option",{"value":"manual"},"Digitar nomes manualmente"));
+    modeEditSel.value = mode;
+    modeEditSel.addEventListener("change",()=>{
+      const newMode = modeEditSel.value;
+      let nextCandidates = candidates;
+      if(newMode === "teams") nextCandidates = candidates.filter(c=>allTeams.includes(c));
+      const updatedAward = {...award, candidateMode:newMode, candidates:nextCandidates};
+      const updatedAwards = awards.map(a=>a.id===award.id?updatedAward:a);
+      persistTournament({...t,awards:updatedAwards});
+    });
+    modeRow.appendChild(modeEditSel);
+    editBox.appendChild(modeRow);
+
+    if(mode === "manual"){
+      editBox.appendChild(el("label",{"class":"lbl"},"Lista manual de candidatos"));
+      const manualInp = el("textarea",{"class":"textarea","style":{minHeight:"80px"},"placeholder":"Um nome por linha ou separados por vírgula"});
+      manualInp.value = candidates.join("\n");
+      editBox.appendChild(manualInp);
+      editBox.appendChild(el("div",{"style":{display:"flex",gap:"8px",alignItems:"center",marginTop:"8px",flexWrap:"wrap"}},
+        btn("btn-primary btn-sm","💾 Salvar nomes",()=>{
+          const nextCandidates = parseCandidatesText(manualInp.value);
+          const updatedAward = {...award, candidateMode:"manual", candidates:nextCandidates};
           const updatedAwards = awards.map(a=>a.id===award.id?updatedAward:a);
           persistTournament({...t,awards:updatedAwards});
+        }),
+        el("span",{"style":{fontSize:"10px",color:"var(--muted)"}},"Use esta opção para Melhor Jogador, MVP ou outras premiações individuais.")
+      ));
+    } else {
+      if(!allTeams.length){
+        editBox.appendChild(el("p",{"style":{fontSize:"11px",color:"var(--muted)"}},"Nenhuma equipe disponível no torneio."));
+      } else {
+        const grid = el("div",{"style":{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:"6px"}});
+        allTeams.forEach(team=>{
+          const checked = candidates.includes(team);
+          const opt = el("label",{"style":{display:"flex",alignItems:"center",gap:"8px",padding:"7px 9px",border:"1px solid var(--border)",borderRadius:"6px",background:checked?"var(--accentfade)":"var(--s1)",cursor:"pointer",fontSize:"12px"}});
+          const cb = el("input",{"type":"checkbox"});
+          cb.checked = checked;
+          cb.addEventListener("change",()=>{
+            const current = new Set(candidates);
+            if(cb.checked) current.add(team); else current.delete(team);
+            const updatedAward = {...award, candidateMode:"teams", candidates:[...current]};
+            const updatedAwards = awards.map(a=>a.id===award.id?updatedAward:a);
+            persistTournament({...t,awards:updatedAwards});
+          });
+          opt.appendChild(cb);
+          opt.appendChild(el("span",{},team));
+          grid.appendChild(opt);
         });
-        opt.appendChild(cb);
-        opt.appendChild(el("span",{},team));
-        grid.appendChild(opt);
-      });
-      editBox.appendChild(grid);
+        editBox.appendChild(grid);
+      }
     }
     ac.appendChild(editBox);
 
@@ -983,7 +1068,7 @@ function renderAwardsAdmin(t) {
     ac.appendChild(el("div",{"style":{fontSize:"10px",color:"var(--muted)",marginBottom:"6px"}},`${totalVotes} voto${totalVotes!==1?"s":""} registrado${totalVotes!==1?"s":""}`));
 
     if(candidates.length===0){
-      ac.appendChild(el("p",{"style":{fontSize:"11px",color:"var(--red)",marginBottom:"8px"}},"Selecione pelo menos um candidato para este prêmio."));
+      ac.appendChild(el("p",{"style":{fontSize:"11px",color:"var(--red)",marginBottom:"8px"}},"Selecione ou digite pelo menos um candidato para este prêmio."));
     }
 
     candidates.forEach(team=>{
@@ -1003,6 +1088,13 @@ function renderAwardsAdmin(t) {
 
   wrap.appendChild(card);
   return wrap;
+}
+
+function parseCandidatesText(txt) {
+  return [...new Set((txt || "")
+    .split(/[\n,;]+/)
+    .map(s=>s.trim())
+    .filter(Boolean))];
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1091,10 +1183,10 @@ function renderCourtBanners(t) {
     b.appendChild(lbl);
     const teams = div("banner-teams");
     teams.appendChild(el("span",{"class":"banner-team live-team"},liveG.a));
-    if(liveG.sA!==null&&liveG.sB!==null){
-      teams.appendChild(el("span",{"class":"banner-score"},String(liveG.sA)));
+    if(hasScorePair(liveG.sA, liveG.sB)){
+      teams.appendChild(el("span",{"class":"banner-score"},safeScore(liveG.sA)));
       teams.appendChild(el("span",{"class":"banner-vs","style":{"color":"var(--accent)"}},`×`));
-      teams.appendChild(el("span",{"class":"banner-score"},String(liveG.sB)));
+      teams.appendChild(el("span",{"class":"banner-score"},safeScore(liveG.sB)));
     } else {
       teams.appendChild(el("span",{"class":"banner-vs","style":{"color":"var(--accent)","padding":"0 14px","fontSize":"22px"}},`×`));
     }
@@ -1310,13 +1402,13 @@ function renderClassTable(ranking, showPts) {
     const tr = el("tr",{"class":i<2&&showPts?"qualify":""});
     const rankEl=el("span",{"class":`rank ${rCls[i]||"rn"}`},icons[i]||(i+1).toString());
     tr.appendChild(el("td",{},rankEl));
-    tr.appendChild(el("td",{"style":{fontWeight:"600"}},r.team));
+    tr.appendChild(el("td",{"style":{fontWeight:"600"}},safeText(r.team)));
     [r.played,r.w,r.d,r.l,r.gf,r.ga].forEach(v=>{
-      tr.appendChild(el("td",{"class":"c","style":{fontFamily:"var(--mono)",fontSize:"11px",color:"var(--muted)"}},String(v)));
+      tr.appendChild(el("td",{"class":"c","style":{fontFamily:"var(--mono)",fontSize:"11px",color:"var(--muted)"}},safeText(v)));
     });
-    const diffEl=el("td",{"class":"c","style":{fontFamily:"var(--mono)",fontSize:"11px",color:r.diff>0?"var(--accent)":r.diff<0?"var(--red)":"var(--muted)"}},`${r.diff>0?"+":""}${r.diff}`);
+    const diffEl=el("td",{"class":"c","style":{fontFamily:"var(--mono)",fontSize:"11px",color:r.diff>0?"var(--accent)":r.diff<0?"var(--red)":"var(--muted)"}},isValidNumber(r.diff)?`${r.diff>0?"+":""}${r.diff}`:"-");
     tr.appendChild(diffEl);
-    if(showPts) tr.appendChild(el("td",{"class":"c"},el("span",{"class":"pts-badge"},String(r.pts))));
+    if(showPts) tr.appendChild(el("td",{"class":"c"},el("span",{"class":"pts-badge"},safeText(r.pts))));
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);
@@ -1334,7 +1426,7 @@ function renderGameList(games, readOnly, t, onScore, groupKey) {
 }
 
 function renderGameRow(g, readOnly, t, key, onScore) {
-  const done = g.sA!==null&&g.sB!==null;
+  const done = hasScorePair(g.sA, g.sB);
   const aW = done&&+g.sA>+g.sB, bW = done&&+g.sB>+g.sA;
   const isLive = key===normalizeGameKey(t?.liveId), isNext = key===normalizeGameKey(t?.nextId);
   const cls = `game-row ${isLive?"is-live":isNext?"is-next":done?"done":"pending"}`;
@@ -1343,18 +1435,18 @@ function renderGameRow(g, readOnly, t, key, onScore) {
   const numEl = el("span",{"class":"g-num"});
   if(isLive) numEl.innerHTML=`<span style="color:var(--accent)">●</span>`;
   else if(isNext) numEl.innerHTML=`<span style="color:var(--blue)">●</span>`;
-  else numEl.textContent=`#${g.id}`;
+  else numEl.textContent=`#${safeText(g.id)}`;
   row.appendChild(numEl);
 
-  row.appendChild(el("span",{"class":"g-team"+(aW?" winner":"")},g.a));
+  row.appendChild(el("span",{"class":"g-team"+(aW?" winner":"")},safeText(g.a)));
 
   if(readOnly){
-    row.appendChild(el("span",{"class":"g-score"+(aW?" winner":"")},done?String(g.sA):"—"));
+    row.appendChild(el("span",{"class":"g-score"+(aW?" winner":"")},done?safeScore(g.sA):"-"));
     row.appendChild(el("span",{"class":"g-vs"},"×"));
-    row.appendChild(el("span",{"class":"g-score"+(bW?" winner":"")},done?String(g.sB):"—"));
+    row.appendChild(el("span",{"class":"g-score"+(bW?" winner":"")},done?safeScore(g.sB):"-"));
   } else {
-    const inA = el("input",{"class":"g-score-inp","type":"number","min":"0","value":g.sA!==null?String(g.sA):""});
-    const inB = el("input",{"class":"g-score-inp","type":"number","min":"0","value":g.sB!==null?String(g.sB):""});
+    const inA = el("input",{"class":"g-score-inp","type":"number","min":"0","value":safeInputValue(g.sA)});
+    const inB = el("input",{"class":"g-score-inp","type":"number","min":"0","value":safeInputValue(g.sB)});
     const commit=()=>{ if(inA.value!==""&&inB.value!==""){ onScore(g.id,"__score",{sA:inA.value,sB:inB.value}); } };
     inA.addEventListener("blur",commit); inB.addEventListener("blur",commit);
     inA.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key==="Tab"){e.preventDefault();inB.focus();}});
@@ -1364,7 +1456,7 @@ function renderGameRow(g, readOnly, t, key, onScore) {
     row.appendChild(inB);
   }
 
-  row.appendChild(el("span",{"class":"g-team"+(bW?" winner":"")},g.b));
+  row.appendChild(el("span",{"class":"g-team"+(bW?" winner":"")},safeText(g.b)));
 
   if(isLive) row.appendChild(el("span",{"class":"g-badge live-badge"},"QUADRA"));
   else if(isNext) row.appendChild(el("span",{"class":"g-badge next-badge"},"PRÓX"));
@@ -1374,20 +1466,20 @@ function renderGameRow(g, readOnly, t, key, onScore) {
 }
 
 function renderElimSlot(label, a, b, sA, sB, cls, readOnly, t, key, onScore) {
-  const done=sA!==null&&sB!==null;
+  const done=hasScorePair(sA,sB);
   const aW=done&&+sA>+sB, bW=done&&+sB>+sA;
   const isLive=key===normalizeGameKey(t?.liveId), isNext=key===normalizeGameKey(t?.nextId);
   const slot = el("div",{"class":`elim-slot ${cls}${isLive?" is-live":isNext?" is-next":""}`});
   slot.appendChild(el("span",{"class":"elim-lbl"},label));
-  slot.appendChild(el("span",{"class":"g-team"+(aW?" winner":"")},a||"—"));
+  slot.appendChild(el("span",{"class":"g-team"+(aW?" winner":"")},safeText(a)));
 
   if(readOnly){
-    slot.appendChild(el("span",{"class":"g-score"+(aW?" winner":"")},done?String(sA):"—"));
+    slot.appendChild(el("span",{"class":"g-score"+(aW?" winner":"")},done?safeScore(sA):"-"));
     slot.appendChild(el("span",{"class":"g-vs"},"×"));
-    slot.appendChild(el("span",{"class":"g-score"+(bW?" winner":"")},done?String(sB):"—"));
+    slot.appendChild(el("span",{"class":"g-score"+(bW?" winner":"")},done?safeScore(sB):"-"));
   } else {
-    const inA=el("input",{"class":"g-score-inp","type":"number","min":"0","value":sA!==null?String(sA):""});
-    const inB=el("input",{"class":"g-score-inp","type":"number","min":"0","value":sB!==null?String(sB):""});
+    const inA=el("input",{"class":"g-score-inp","type":"number","min":"0","value":safeInputValue(sA)});
+    const inB=el("input",{"class":"g-score-inp","type":"number","min":"0","value":safeInputValue(sB)});
     const commit=()=>{if(inA.value!==""&&inB.value!==""){onScore("__score",{sA:inA.value,sB:inB.value});}};
     inA.addEventListener("blur",commit);inB.addEventListener("blur",commit);
     inA.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key==="Tab"){e.preventDefault();inB.focus();}});
@@ -1396,7 +1488,7 @@ function renderElimSlot(label, a, b, sA, sB, cls, readOnly, t, key, onScore) {
     slot.appendChild(el("span",{"class":"g-vs"},"×"));
     slot.appendChild(inB);
   }
-  slot.appendChild(el("span",{"class":"g-team"+(bW?" winner":"")},b||"—"));
+  slot.appendChild(el("span",{"class":"g-team"+(bW?" winner":"")},safeText(b)));
   if(isLive) slot.appendChild(el("span",{"class":"g-badge live-badge"},"QUADRA"));
   else if(isNext) slot.appendChild(el("span",{"class":"g-badge next-badge"},"PRÓX"));
   return slot;
@@ -1424,7 +1516,7 @@ function renderPodium(first, second, third) {
     .forEach(({l,t:team,c,tc})=>{
       const slot=el("div",{"class":`p-slot ${c}`});
       slot.appendChild(el("div",{"class":"p-lbl","style":{color:tc}},l));
-      slot.appendChild(el("div",{"class":"p-team","style":{color:team?tc:"var(--muted)"}},team||"—"));
+      slot.appendChild(el("div",{"class":"p-team","style":{color:team?tc:"var(--muted)"}},safeText(team)));
       p.appendChild(slot);
     });
   return p;
